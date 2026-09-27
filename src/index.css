@@ -1,0 +1,150 @@
+@import '@fontsource/fredoka/400.css';
+@import '@fontsource/fredoka/500.css';
+@import '@fontsource/fredoka/600.css';
+@import '@fontsource/fredoka/700.css';
+
+/* Design tokens – warm cream + brown, matched to the Meowdoku look she likes. */
+:root {
+  --bg: #f7f1ec;
+  --card: #ffffff;
+  --card-soft: #fbf6f2;
+  --ink: #7a5548;
+  --ink-soft: #a88b80;
+  --ink-strong: #5c3d33;
+  --accent: #f2922f;
+  --accent-ink: #ffffff;
+  --good: #3fae63;
+  --bad: #f06a2c;
+  --gold: #e3b935;
+  --line: #efe5de;
+  --shadow: 0 4px 14px rgba(122, 85, 72, 0.12);
+  --shadow-lg: 0 10px 30px rgba(92, 61, 51, 0.18);
+  --radius: 22px;
+  --radius-sm: 12px;
+  --font: 'Fredoka', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body, #app { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+a { color: inherit; }
+
+.screen {
+  min-height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 12px) 16px calc(var(--safe-bottom) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  flex: 1;
+}
+
+.round-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+  flex: none;
+  transition: transform 0.12s ease;
+}
+.round-btn:active { transform: scale(0.92); }
+.round-btn svg { width: 26px; height: 26px; }
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.pill {
+  background: var(--card);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 22px;
+  font-weight: 600;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.12), var(--shadow);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12), var(--shadow); }
+.btn.secondary { background: var(--card); color: var(--ink); }
+.btn.small { min-height: 44px; font-size: 17px; padding: 0 18px; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+
+.muted { color: var(--ink-soft); }
+.big-num { font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1; }
+.label { font-size: 14px; color: var(--ink-soft); font-weight: 500; }
+
+.tabs { display: flex; background: var(--card-soft); border-radius: 999px; padding: 4px; gap: 4px; }
+.tabs button { flex: 1; min-height: 40px; border-radius: 999px; font-weight: 600; color: var(--ink-soft); }
+.tabs button[aria-selected='true'] { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+
+.fade-in { animation: fadeIn 0.25s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
