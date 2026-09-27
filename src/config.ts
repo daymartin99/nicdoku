@@ -4,7 +4,7 @@ export const COOLDOWN_MIN = 60
 export const LIVES = 3
 /** extra puzzles allowed during a cooldown (not counted in stats) */
 export const JUST_ONE_MORE = 1
-export const DOUBLE_TAP_MS = 320
+export const DOUBLE_TAP_MS = 400
 export const APP_NAME = 'Nicdoku'
 export const OWNER_NAME = 'Nicola'
 export const GENERATOR_VERSION = 'v1'

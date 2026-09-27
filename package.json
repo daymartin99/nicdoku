@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons": "node scripts/make-icons.mjs"
   },
   "dependencies": {
     "@preact/signals": "^2.11.2",
@@ -15,7 +16,9 @@
   },
   "devDependencies": {
     "@fontsource/fredoka": "^5.3.0",
+    "@playwright/test": "^1.63.0",
     "@preact/preset-vite": "^2.10.6",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^24.13.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

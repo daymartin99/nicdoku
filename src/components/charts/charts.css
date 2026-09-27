@@ -1,0 +1,43 @@
+/* Hand-rolled SVG charts + Stats screen bits. Uses the global tokens from index.css. */
+.chart { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font); }
+.chart text { font-family: var(--font); fill: var(--ink-soft); font-size: 11px; font-weight: 500; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .tip rect { fill: var(--ink-strong); }
+.chart .tip text { fill: #fff; font-size: 12px; font-weight: 600; }
+.chart .sel { stroke: var(--ink-soft); stroke-dasharray: 3 3; }
+.chart-caption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.chart-caption h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--ink); }
+
+.streak-dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+.streak-dots span {
+  aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  background: var(--line); color: #fff;
+}
+.streak-dots span.played { background: var(--accent); }
+.streak-dots span.frozen { background: #cfe6f5; color: #4a90c2; }
+.streak-dots span.today { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink-soft); }
+.streak-dots svg { width: 70%; height: 70%; }
+
+/* Stats screen */
+.st-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.st-tile { display: flex; flex-direction: column; gap: 6px; padding: 14px; }
+.st-tile .big-num { font-size: 28px; }
+.st-headline { font-size: 21px; font-weight: 600; color: var(--ink-strong); margin: 4px 0 0; }
+.st-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.st-chip {
+  min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card);
+  box-shadow: var(--shadow); font-weight: 600; color: var(--ink-soft);
+}
+.st-chip[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.st-row:first-child { border-top: 0; }
+.st-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--card-soft); color: var(--ink-soft); }
+.st-tag.pb { background: var(--gold); color: #fff; }
+.st-tag.clean { color: var(--good); }
+.st-day { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin: 6px 4px 0; }
+.st-note { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-soft); line-height: 1.4; }
+.st-note button { color: var(--ink-soft); flex: none; }
+.st-note svg { width: 22px; height: 22px; }
+.st-empty { text-align: center; padding: 28px 16px; font-size: 18px; }
+.st-good { color: var(--good); font-weight: 600; }

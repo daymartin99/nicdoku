@@ -1,0 +1,175 @@
+import { test, expect, type Page } from '@playwright/test'
+
+type Saved = { puzzle: { n: number; solution: number[] }; marks: number[]; done: boolean }
+
+async function skipOnboarding(page: Page, level = 135) {
+  await page.goto('/')
+  await page.evaluate((lvl) => {
+    localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Nicola' }))
+    localStorage.setItem('nd:installHintDismissed', '1')
+    const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
+    localStorage.setItem('nd:progress', JSON.stringify({ ...p, level: lvl }))
+  }, level)
+  await page.reload()
+}
+
+async function current(page: Page): Promise<Saved> {
+  return page.evaluate(() => JSON.parse(localStorage.getItem('nd:game') || 'null'))
+}
+
+async function doubleTap(page: Page, index: number) {
+  const cell = page.locator('.board .cell').nth(index)
+  const box = (await cell.boundingBox())!
+  const x = box.x + box.width / 2, y = box.y + box.height / 2
+  for (let k = 0; k < 2; k++) {
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.up()
+  }
+}
+
+async function solveCurrent(page: Page) {
+  await expect(page.locator('.board')).toBeVisible()
+  const g = await current(page)
+  const n = g.puzzle.n
+  for (let r = 0; r < n; r++) {
+    const i = r * n + g.puzzle.solution[r]
+    const now = await current(page)
+    if (now && now.marks[i] === 2) continue
+    await doubleTap(page, i)
+    await page.waitForTimeout(40)
+  }
+  await expect(page.locator('.win-overlay')).toBeVisible({ timeout: 5000 })
+}
+
+test('onboarding flow works', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.getByRole('button', { name: "Let's go" }).click()
+  await page.getByLabel('Starting level').fill('135')
+  await page.getByRole('button', { name: 'Next' }).click()
+  await page.getByRole('button', { name: 'Start playing' }).click()
+  await expect(page.getByText('Level 135')).toBeVisible()
+})
+
+test('a full break: 5 puzzles → break done → cooldown', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
+  await skipOnboarding(page)
+  await page.getByRole('button', { name: /Start a break/ }).click()
+  for (let k = 0; k < 5; k++) {
+    await solveCurrent(page)
+    const btn = page.locator('.win-btn')
+    await expect(btn).toBeEnabled({ timeout: 3000 })
+    await btn.click()
+  }
+  await expect(page.getByRole('heading', { name: 'Break done' })).toBeVisible()
+  await page.getByRole('button', { name: 'Back to home' }).click()
+  await expect(page.getByText('until your next break unlocks')).toBeVisible()
+  const solves = await page.evaluate(
+    () =>
+      new Promise<number>((res) => {
+        const req = indexedDB.open('nicdoku')
+        req.onsuccess = () => {
+          const tx = req.result.transaction('solves').objectStore('solves').count()
+          tx.onsuccess = () => res(tx.result)
+        }
+      }),
+  )
+  expect(solves).toBe(5)
+  expect(errors).toEqual([])
+})
+
+test('wrong piece costs a heart and leaves an orange X, never fails', async ({ page }) => {
+  await skipOnboarding(page, 40)
+  await page.getByRole('button', { name: /Start a break/ }).click()
+  await expect(page.locator('.board')).toBeVisible()
+  const g = await current(page)
+  const n = g.puzzle.n
+  // 4 wrong placements (more than the 3 lives)
+  let wrong = 0
+  for (let i = 0; i < n * n && wrong < 4; i++) {
+    const r = Math.floor(i / n)
+    if (g.puzzle.solution[r] === i % n) continue
+    await doubleTap(page, i)
+    await page.waitForTimeout(360)
+    wrong++
+  }
+  const after = await current(page)
+  expect(after.marks.filter((m) => m === 3).length).toBe(4)
+  await expect(page.locator('.life.lost')).toHaveCount(3)
+  await solveCurrent(page) // can still finish
+  await expect(page.locator('.win-line')).not.toHaveText(/clean solve/)
+})
+
+test('reload mid-puzzle restores the exact board', async ({ page }) => {
+  await skipOnboarding(page)
+  await page.getByRole('button', { name: /Start a break/ }).click()
+  await expect(page.locator('.board')).toBeVisible()
+  const g = await current(page)
+  const n = g.puzzle.n
+  const i = n * 0 + g.puzzle.solution[0]
+  await doubleTap(page, i)
+  // single tap somewhere else → X
+  const other = (i + 2 * n) % (n * n)
+  await page.locator('.board .cell').nth(other).click()
+  await page.waitForTimeout(400)
+  const before = await current(page)
+  await page.reload()
+  await expect(page.locator('.board')).toBeVisible()
+  const after = await current(page)
+  expect(after.marks).toEqual(before.marks)
+  expect(after.puzzle).toEqual(before.puzzle)
+})
+
+test('stress: random taps, drags, undo, hints, then solve — no errors', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await skipOnboarding(page, 200)
+  await page.getByRole('button', { name: /Start a break/ }).click()
+  const board = page.locator('.board')
+  await expect(board).toBeVisible()
+  const box = (await board.boundingBox())!
+  let seed = 42
+  const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+  for (let k = 0; k < 150; k++) {
+    const x = box.x + rand() * box.width, y = box.y + rand() * box.height
+    const action = rand()
+    if (action < 0.5) {
+      await page.mouse.click(x, y)
+    } else if (action < 0.8) {
+      await page.mouse.move(x, y)
+      await page.mouse.down()
+      await page.mouse.move(box.x + rand() * box.width, box.y + rand() * box.height, { steps: 6 })
+      await page.mouse.up()
+    } else if (action < 0.9) {
+      await page.getByRole('button', { name: /Undo/ }).click({ trial: false }).catch(() => {})
+    } else {
+      await page.getByRole('button', { name: 'Cross out impossible cells' }).click()
+    }
+  }
+  await page.getByRole('button', { name: 'Explain the next step' }).click()
+  await expect(page.locator('.hint-bubble')).toBeVisible()
+  await page.getByRole('button', { name: 'Show me' }).click()
+  // clear board to known state and solve
+  await page.getByRole('button', { name: /Reset/ }).click()
+  await solveCurrent(page)
+  expect(errors).toEqual([])
+})
+
+test('daily puzzle is identical on a fresh device', async ({ page, browser }) => {
+  await skipOnboarding(page)
+  await page.getByRole('button', { name: /Daily puzzle/ }).click()
+  await expect(page.locator('.board')).toBeVisible()
+  const a = await current(page)
+  const ctx = await browser.newContext({ baseURL: 'http://localhost:4174' })
+  const p2 = await ctx.newPage()
+  await skipOnboarding(p2, 7)
+  await p2.getByRole('button', { name: /Daily puzzle/ }).click()
+  await expect(p2.locator('.board')).toBeVisible()
+  const b = await current(p2)
+  expect(b.puzzle).toEqual(a.puzzle)
+  await ctx.close()
+})

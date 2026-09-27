@@ -1,0 +1,132 @@
+/* Settings + About screens */
+.set-group { display: flex; flex-direction: column; gap: 8px; }
+.set-group > h2 {
+  margin: 6px 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.set-group > .card { padding: 6px 16px; }
+.set-group > .card.padded { padding: 16px; }
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 0;
+}
+.set-row + .set-row { border-top: 1px solid var(--line); }
+.set-row .grow { flex: 1; min-width: 0; }
+.set-row .title { font-size: 18px; font-weight: 600; color: var(--ink); }
+.set-row .sub { font-size: 14px; color: var(--ink-soft); line-height: 1.3; }
+button.set-row { width: 100%; text-align: left; }
+.set-stack { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; }
+.set-stack + .set-row, .set-row + .set-stack, .toggle-row + .set-stack, .set-stack + .toggle-row { border-top: 1px solid var(--line); }
+
+.text-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card-soft);
+  color: var(--ink-strong);
+  font: inherit;
+  font-size: 18px;
+  -webkit-user-select: text;
+  user-select: text;
+  outline: none;
+}
+.text-input:focus { border-color: var(--accent); background: #fff; }
+.text-input.emoji { width: 64px; text-align: center; padding: 0 6px; }
+
+.seg { display: flex; flex-direction: column; gap: 6px; background: var(--card-soft); border-radius: 18px; padding: 5px; }
+.seg button {
+  min-height: 52px;
+  padding: 6px 14px;
+  border-radius: 14px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  line-height: 1.25;
+}
+.seg button[aria-pressed='true'] { background: #fff; color: var(--ink-strong); box-shadow: var(--shadow); }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn-row > * { flex: 1 1 140px; }
+label.btn { cursor: pointer; }
+label.btn input[type='file'] { display: none; }
+.btn.danger { background: #fff0ea; color: var(--bad); box-shadow: none; }
+
+.photo-grid { display: flex; flex-wrap: wrap; gap: 12px; }
+.photo-thumb { position: relative; width: 72px; height: 72px; }
+.photo-thumb > button.pick {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid transparent;
+  box-shadow: var(--shadow);
+}
+.photo-thumb > button.pick[aria-pressed='true'] { border-color: var(--accent); }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.photo-thumb > button.del {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+.photo-thumb > button.del span {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ink-strong);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.member-emoji { font-size: 28px; width: 40px; text-align: center; flex: none; }
+.icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+}
+.icon-btn:active { background: var(--card-soft); }
+
+.set-msg {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: #eef8f0;
+  color: #2c7a47;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.set-msg.err { background: #fff0ea; color: #b8471a; }
+
+.version { text-align: center; font-size: 13px; color: var(--ink-soft); padding: 8px 0 4px; }
+
+/* About */
+.about p, .about li { font-size: 17px; line-height: 1.45; color: var(--ink); }
+.about p { margin: 0 0 10px; }
+.about p:last-child { margin-bottom: 0; }
+.about h2 { margin: 0 0 8px; font-size: 21px; font-weight: 600; color: var(--ink-strong); }
+.about a { color: #c46a14; font-weight: 600; }
+.about ul { margin: 0 0 10px; padding-left: 20px; }
+.rule { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
+.rule + .rule { border-top: 1px solid var(--line); }
+.rule svg { flex: none; }
+.rule p { margin: 0; }
