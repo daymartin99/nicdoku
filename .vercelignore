@@ -1,0 +1,8 @@
+docs
+e2e
+test-results
+playwright-report
+dist
+.claude
+scripts
+*.test.ts
