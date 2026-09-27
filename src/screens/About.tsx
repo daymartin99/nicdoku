@@ -96,26 +96,26 @@ export function AboutScreen() {
 
       <section class="card">
         <h2>How to play</h2>
-        <div class="rule">
+        <div class="about-rule">
           <MiniGrid
             regions={['AABB', 'ACCB', 'DDCB', 'DDCC']}
             marks={['.o..', '...o', 'o...', '..o.']}
           />
           <p>Place one piece in every <b>row</b>, every <b>column</b> and every <b>colour</b>.</p>
         </div>
-        <div class="rule">
+        <div class="about-rule">
           <MiniGrid regions={['EEE', 'EEE', 'EEE']} marks={['xxx', 'xox', 'xxx']} />
           <p>Pieces can't <b>touch</b>, not even corner to corner.</p>
         </div>
-        <div class="rule">
+        <div class="about-rule">
           <Gesture kind="tap" />
           <p><b>Tap</b> a square to mark it with an X (a square that can't have a piece).</p>
         </div>
-        <div class="rule">
+        <div class="about-rule">
           <Gesture kind="double" />
           <p><b>Double-tap</b> to place a piece.</p>
         </div>
-        <div class="rule">
+        <div class="about-rule">
           <Gesture kind="drag" />
           <p><b>Drag</b> across squares to X lots at once.</p>
         </div>

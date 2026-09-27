@@ -238,18 +238,18 @@ export function validateFamily(v: unknown): FamilyData | null {
   return { members, specials }
 }
 
+const FAMILY_FILE_ERR = "That isn't a Nicdoku family file. Ask David to send it again."
+
 export async function importFamily(file: File): Promise<FamilyData> {
   let raw: unknown
   try {
     raw = JSON.parse(await file.text())
   } catch {
-    throw new Error("Couldn't read that file. It needs to be a family .json file.")
+    throw new Error(FAMILY_FILE_ERR)
   }
   const data = validateFamily(raw)
   if (!data) {
-    throw new Error(
-      'That file doesn’t look right. It needs "members" (name + birthday YYYY-MM-DD) and "specials" (date MM-DD, title, message).',
-    )
+    throw new Error(FAMILY_FILE_ERR)
   }
   await setFamily(data)
   return data

@@ -1,0 +1,12 @@
+import { webkit, devices } from '@playwright/test'
+const browser = await webkit.launch()
+const ctx = await browser.newContext({ ...devices['iPhone 13'], baseURL: 'http://localhost:4175' })
+const p = await ctx.newPage()
+await p.goto('/manifest.webmanifest')
+await p.evaluate(() => { localStorage.clear(); localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Nicola' })) })
+await p.goto('/'); await p.waitForTimeout(800)
+await p.screenshot({ path: 'docs/review/extra/sat-installhint.png' })
+await p.screenshot({ path: 'docs/review/extra/sat-installhint-full.png', fullPage: true })
+const r = await p.evaluate(() => { const c=[...document.querySelectorAll('.card')].find(e=>e.textContent.includes('Home Screen')); const b=c.getBoundingClientRect(); return {top:b.top,left:b.left,w:b.width,parent:c.parentElement.className, sh: document.documentElement.scrollHeight, ih: innerHeight} })
+console.log(JSON.stringify(r))
+await browser.close()

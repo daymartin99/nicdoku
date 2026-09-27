@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { allSolves, localDay, type SolveRecord } from '../db'
 import { go } from '../router'
 import { BackIcon, InfoIcon } from '../components/Icons'
-import { BarChart, Heatmap, LineChart, StreakDots } from '../components/charts'
+import { BarChart, Heatmap, LineChart, Snowflake, StreakDots } from '../components/charts'
 import '../components/charts/charts.css'
 import {
+  daysBetween,
   dailySeries,
   formatDuration,
   formatTime,
@@ -86,15 +87,14 @@ export function StatsScreen() {
         </>
       )}
 
-      <div class="st-note">
-        <button aria-label="About Nicdoku" onClick={() => go('about')}>
-          <InfoIcon />
-        </button>
-        <span>
-          These numbers show how you're getting on at this puzzle. Short focused breaks tend to leave people
-          feeling more energised — that's the point.
-        </span>
-      </div>
+      {tab === 'overview' && (
+        <div class="st-note">
+          <button aria-label="About Nicdoku" onClick={() => go('about')}>
+            <InfoIcon />
+          </button>
+          <span>These numbers only compare you with you. Play as much or as little as you like.</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -105,9 +105,12 @@ function Overview({ solves }: { solves: SolveRecord[] }) {
     const t = totals(solves)
     const st = streak(solves, today)
     const series = dailySeries(solves, 30, today)
-    return { t, st, series, head: headline(solves, today), heat: heatmap(solves, 12, today) }
+    // Only as many weeks as she has been playing (4–12), so a new player isn't faced with a sea of blanks.
+    const first = solves.reduce((a, s) => (s.day < a ? s.day : a), today)
+    const weeks = Math.min(12, Math.max(4, Math.ceil(daysBetween(first, today) / 7) + 1))
+    return { t, st, series, head: headline(solves, today), heat: heatmap(solves, weeks, today), weeks, first }
   }, [solves, today])
-  const { t, st, series, head, heat } = data
+  const { t, st, series, head, heat, weeks, first } = data
 
   const bars = series.map((d, i) => ({
     label: shortDate(d.day),
@@ -117,16 +120,18 @@ function Overview({ solves }: { solves: SolveRecord[] }) {
 
   return (
     <div class="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div class="card">
-        <div class="label">Lately</div>
-        <p class="st-headline">{head}</p>
-      </div>
+      {head && (
+        <div class="card">
+          <div class="label">Lately</div>
+          <p class="st-headline">{head}</p>
+        </div>
+      )}
 
       <div class="st-tiles">
         <Tile label="Puzzles solved" value={String(t.puzzles)} />
         <Tile label="Clean solves" value={pct(t.cleanRate)} />
         <Tile label="Time played" value={formatDuration(t.totalTimeMs)} />
-        <Tile label="Best session score" value={t.bestSessionScore ? t.bestSessionScore.toLocaleString() : '–'} />
+        <Tile label="Best session score" value={t.bestSessionScore ? t.bestSessionScore.toLocaleString('en-GB') : '–'} />
       </div>
 
       <div class="card">
@@ -136,9 +141,14 @@ function Overview({ solves }: { solves: SolveRecord[] }) {
         </div>
         <StreakDots days={st.days} />
         <p class="label" style={{ margin: '10px 0 0' }}>
-          {st.freezesLeftThisWeek > 0
-            ? `❄ ${st.freezesLeftThisWeek} rest day${st.freezesLeftThisWeek === 1 ? '' : 's'} covered this week — breaks are fine.`
-            : 'Rest days are part of it. Pick up whenever suits you.'}
+          {st.current > 0 && st.freezesLeftThisWeek > 0 ? (
+            <>
+              <span class="st-icon" aria-hidden="true"><Snowflake /></span>
+              {`${st.freezesLeftThisWeek} rest day${st.freezesLeftThisWeek === 1 ? '' : 's'} left this week. Your run is safe if you skip.`}
+            </>
+          ) : (
+            'Rest days are part of it. Pick up whenever suits you.'
+          )}
           {st.best >= 3 ? ` Longest run: ${st.best} days.` : ''}
         </p>
       </div>
@@ -154,9 +164,9 @@ function Overview({ solves }: { solves: SolveRecord[] }) {
       <div class="card">
         <div class="chart-caption">
           <h3>Puzzle calendar</h3>
-          <span class="label">12 weeks</span>
+          <span class="label">{weeks} weeks</span>
         </div>
-        <Heatmap data={heat} ariaLabel="Puzzles solved per day over the last 12 weeks" />
+        <Heatmap data={heat} startDay={first} ariaLabel={`Puzzles solved per day over the last ${weeks} weeks`} />
       </div>
     </div>
   )
@@ -200,8 +210,14 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
   if (size === undefined || !d) {
     return <div class="card st-empty">Only bonus puzzles so far — size records start with regular ones.</div>
   }
-  const points = d.tr.points.map((p) => ({ label: shortDate(p.week), value: p.median, highlight: p.hasPB }))
+  // Trim empty weeks before she started this size (but keep at least 2 points for a line).
+  const firstReal = d.tr.points.findIndex((p) => p.median !== null)
+  const start = Math.max(0, Math.min(firstReal < 0 ? 0 : firstReal, d.tr.points.length - 2))
+  const points = d.tr.points
+    .slice(start)
+    .map((p) => ({ label: shortDate(p.week), value: p.median, highlight: p.hasPB }))
   const hasTrend = points.filter((p) => p.value !== null).length >= 2
+  const hasGold = points.some((p) => p.highlight && p.value !== null)
 
   return (
     <div class="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -229,11 +245,18 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
       <div class="card">
         <div class="chart-caption">
           <h3>Typical time by week</h3>
-          {d.tr.improvementPct !== null && <span class="st-good">{d.tr.improvementPct}% faster</span>}
+          {d.tr.improvementPct !== null && d.tr.baselineWeek && (
+            <span class="st-good">{d.tr.improvementPct}% faster than w/c {shortDate(d.tr.baselineWeek)}</span>
+          )}
         </div>
         {hasTrend ? (
-          <LineChart points={points} format={formatTime}
-            ariaLabel={`Weekly median ${sizeLabel(size)} time over 8 weeks; gold dots are weeks with a new best`} />
+          <>
+            <LineChart points={points} format={formatTime}
+              ariaLabel={`Weekly median ${sizeLabel(size)} time over ${points.length} weeks; gold dots are weeks with a new best`} />
+            {hasGold && (
+              <p class="label chart-legend"><i class="dot-gold" aria-hidden="true" /> gold = a week you set a new best</p>
+            )}
+          </>
         ) : (
           <p class="muted" style={{ margin: 0 }}>Play this size across a couple of weeks and your line appears here.</p>
         )}
@@ -244,7 +267,7 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
         {d.st.fastest.map((s, i) => (
           <div class="st-row" key={s.id ?? s.at}>
             <span>{i + 1}. <strong>{formatTime(s.timeMs)}</strong></span>
-            <span class="label">{shortDate(s.day)} · {s.difficulty}{s.clean ? ' · ✓' : ''}</span>
+            <span class="label">{shortDate(s.day)} · {s.difficulty}{s.clean ? ' · clean' : ''}</span>
           </div>
         ))}
       </div>
@@ -283,10 +306,13 @@ function History({ solves }: { solves: SolveRecord[] }) {
                   <strong style={{ minWidth: 44 }}>{formatTime(s.timeMs)}</strong>
                   <span>{sizeLabel(s.n)}</span>
                   <span class="st-tag">{s.difficulty}</span>
-                  {s.clean && <span class="st-tag clean" aria-label="clean solve">✓</span>}
+                  {s.clean && <span class="st-tag clean" aria-label="clean solve">
+                      {/* ✓ renders as √ in Fredoka, so draw the tick */}
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                    </span>}
                   {groups.pbs.has(s) && <span class="st-tag pb">best!</span>}
                 </span>
-                <span class="label">{s.score}</span>
+                <span class="label">{s.score.toLocaleString('en-GB')} pts</span>
               </div>
             ))}
           </div>

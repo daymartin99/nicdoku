@@ -71,11 +71,11 @@ export function InstallHint() {
       </div>
       <ol style={{ margin: 0, paddingLeft: '22px', display: 'grid', gap: '8px', fontSize: '16px', lineHeight: 1.35 }}>
         <li>
-          Tap the Share button <ShareGlyph /> in Safari
-          <span class="muted"> (bottom of the screen, or next to the address bar)</span>
+          Tap <b>•••</b> or the Share button <ShareGlyph /> at the bottom of Safari, then <b>Share</b>
         </li>
         <li>
-          Scroll down and tap <b>Add to Home Screen</b> <PlusBox />
+          Tap <b>Add to Home Screen</b> <PlusBox />
+          <span class="muted"> (you may need to tap More)</span>
         </li>
         <li>Tap <b>Add</b>, then open Nicdoku from its new icon</li>
       </ol>

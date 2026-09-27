@@ -119,22 +119,28 @@ describe('personal bests', () => {
     expect(cleanPersonalBests(s).get(9)!.timeMs).toBe(130_000)
     expect(sizesPlayed(s)).toEqual([9, 10])
   })
-  it('isNewPB needs something to beat and must be strictly faster', () => {
+  it('isNewPB needs 3 earlier solves of that size and must be strictly faster', () => {
     const first = rec({ day: '2026-09-01', n: 8, timeMs: 90_000 })
     expect(isNewPB([], first)).toBe(false)
     const faster = rec({ day: '2026-09-10', n: 9, timeMs: 100_000 })
     expect(isNewPB(s, faster)).toBe(true)
     const tie = rec({ day: '2026-09-10', n: 9, timeMs: 110_000 })
     expect(isNewPB(s, tie)).toBe(false)
-    // a 10×10 PB doesn't depend on 9×9 times
+    // only one earlier 10×10, so no "best" yet (and 9×9 times don't count toward it)
     const big = rec({ day: '2026-09-10', n: 10, timeMs: 299_000 })
-    expect(isNewPB(s, big)).toBe(true)
+    expect(isNewPB(s, big)).toBe(false)
+    const tens = [310_000, 305_000].map((t, i) => rec({ day: `2026-09-0${i + 5}`, n: 10, timeMs: t }))
+    expect(isNewPB([...s, ...tens], big)).toBe(true)
     // ignores rec if present in the list
     expect(isNewPB([...s, faster], faster)).toBe(true)
+    // second-ever solve is never a best, however fast
+    expect(isNewPB([first], rec({ day: '2026-09-02', n: 8, timeMs: 10_000 }))).toBe(false)
   })
-  it('pbSet marks solves that were bests at the time', () => {
-    const set = pbSet(s)
-    expect([...set].map((x) => x.timeMs)).toEqual([110_000])
+  it('pbSet marks solves that were bests at the time (after 3 earlier solves)', () => {
+    expect(pbSet(s).size).toBe(0) // 110k was only the 2nd 9×9
+    const later = rec({ day: '2026-09-05', n: 9, timeMs: 105_000 })
+    const set = pbSet([...s, later])
+    expect([...set].map((x) => x.timeMs)).toEqual([105_000])
   })
 })
 
@@ -259,15 +265,17 @@ describe('trend', () => {
     const s = [
       rec({ day: '2026-08-03', timeMs: 200_000 }), // first week in range (8 weeks back from 21 Sep = 3 Aug)
       rec({ day: '2026-08-04', timeMs: 220_000 }),
+      rec({ day: '2026-08-05', timeMs: 230_000 }),
       rec({ day: '2026-09-22', timeMs: 150_000 }),
       rec({ day: '2026-09-23', timeMs: 170_000 }),
     ]
     const t = trend(s, 9, 8, TODAY)
     expect(t.points).toHaveLength(8)
-    expect(t.points[0]).toMatchObject({ week: '2026-08-03', median: 210_000, count: 2 })
+    expect(t.points[0]).toMatchObject({ week: '2026-08-03', median: 220_000, count: 3 })
     expect(t.points[7]).toMatchObject({ week: '2026-09-21', median: 160_000, hasPB: true })
     expect(t.points[3].median).toBeNull()
-    expect(t.improvementPct).toBe(24)
+    expect(t.improvementPct).toBe(27)
+    expect(t.baselineWeek).toBe('2026-08-03')
   })
   it('returns null improvement when slower', () => {
     const s = [rec({ day: '2026-08-03', timeMs: 100_000 }), rec({ day: '2026-09-22', timeMs: 150_000 })]
@@ -296,9 +304,11 @@ describe('totals & sessions', () => {
     expect(totals([])).toMatchObject({ puzzles: 0, cleanRate: null, avgFirstTapMs: null })
   })
   it('sessionSummaries groups by session and counts PBs', () => {
-    const sums = sessionSummaries(s)
+    // three earlier unsessioned 9×9s so the PB rule (3 prior) can fire
+    const warm = [1, 2, 3].map((d) => rec({ day: `2026-09-0${d}`, sessionId: undefined, mode: 'daily', timeMs: 100_000 }))
+    const sums = sessionSummaries([...warm, ...s])
     expect(sums.map((x) => x.sessionId)).toEqual(['a', 'b'])
-    expect(sums[0]).toMatchObject({ count: 2, totalTimeMs: 170_000, score: 220, cleanCount: 1, pbCount: 1 })
+    expect(sums[0]).toMatchObject({ count: 2, totalTimeMs: 170_000, score: 220, cleanCount: 1, pbCount: 2 })
     expect(sums[1]).toMatchObject({ count: 1, pbCount: 1 })
   })
   it('sizeStats', () => {
@@ -312,12 +322,12 @@ describe('totals & sessions', () => {
 })
 
 describe('headline', () => {
-  it('welcomes when empty', () => {
-    expect(headline([], TODAY)).toBe('Welcome back')
+  it('says nothing when empty', () => {
+    expect(headline([], TODAY)).toBe('')
   })
   it('prefers a fresh PB', () => {
     const s = [
-      rec({ day: '2026-09-20', timeMs: 120_000 }),
+      ...['2026-09-18', '2026-09-19', '2026-09-20'].map((day) => rec({ day, timeMs: 120_000 })),
       rec({ day: '2026-09-26', timeMs: 102_000 }),
     ]
     expect(headline(s, TODAY)).toBe('New 9×9 best yesterday: 1:42')

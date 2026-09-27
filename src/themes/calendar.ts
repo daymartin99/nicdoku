@@ -118,7 +118,7 @@ const range = (m: number, d: number, m2: number, d2: number): Rule => ({ t: 'ran
 const wiki = (page: string, label = 'Wikipedia') => ({ label, url: `https://en.wikipedia.org/wiki/${page}` })
 const un = (slug: string) => ({ label: 'United Nations', url: `https://www.un.org/en/observances/${slug}` })
 const GOV_BH = { label: 'GOV.UK', url: 'https://www.gov.uk/bank-holidays' }
-const RBL = { label: 'Royal British Legion', url: 'https://www.britishlegion.org.uk/' }
+const RBL = { label: 'Royal British Legion', url: 'https://www.britishlegion.org.uk/get-involved/remembrance/about-remembrance' }
 
 const jokeFact = (what: string): Fact => ({
   title: 'Is this a real day?',
@@ -188,7 +188,7 @@ const ENTRIES: Entry[] = [
     fact: {
       title: 'Pizza',
       body: "The art of the Neapolitan pizza-maker was added to UNESCO's Intangible Cultural Heritage list in 2017. A Margherita's toppings match the Italian flag: red tomato, white mozzarella, green basil.",
-      link: wiki('Neapolitan_pizza'),
+      link: { label: 'UNESCO', url: 'https://ich.unesco.org/en/RL/art-of-neapolitan-pizzaiuolo-00722' },
     },
   },
   {
@@ -289,7 +289,7 @@ const ENTRIES: Entry[] = [
     fact: {
       title: 'World Poetry Day',
       body: 'UNESCO chose 21 March as World Poetry Day in 1999.',
-      link: un('world-poetry-day'),
+      link: wiki('World_Poetry_Day'),
     },
   },
   {
@@ -402,7 +402,7 @@ const ENTRIES: Entry[] = [
     tagline: 'May the Fourth be with you 🪐',
     fact: {
       title: 'May the Fourth',
-      body: "'May the Fourth be with you' is a pun on the Star Wars line 'May the Force be with you'. One early sighting was a 1979 London newspaper advert congratulating Margaret Thatcher on becoming Prime Minister.",
+      body: "'May the Fourth be with you' is a pun on the Star Wars line 'May the Force be with you'. One early sighting was a 1979 London Evening News advert from Margaret Thatcher's party workers, placed around the election that made her Prime Minister.",
       link: wiki('Star_Wars_Day'),
     },
   },
@@ -553,7 +553,7 @@ const ENTRIES: Entry[] = [
     tagline: 'Put the kettle on, it’s Yorkshire Day 🫖',
     fact: {
       title: 'Yorkshire Day',
-      body: 'Yorkshire Day has been celebrated on 1 August since 1975. The white rose has been a symbol of Yorkshire since medieval times.',
+      body: 'Yorkshire Day has been celebrated on 1 August since 1975. Its white rose began as the badge of the medieval House of York.',
       link: wiki('Yorkshire_Day'),
     },
   },
@@ -587,7 +587,7 @@ const ENTRIES: Entry[] = [
     fact: {
       title: 'World Photography Day',
       body: 'It marks 19 August 1839, when the French government announced the daguerreotype photography process as a gift free to the world.',
-      link: wiki('World_Photography_Day'),
+      link: wiki('Daguerreotype'),
     },
   },
   {
@@ -629,7 +629,7 @@ const ENTRIES: Entry[] = [
     fact: {
       title: 'International Day of Peace',
       body: "The UN's International Day of Peace has been held on 21 September every year since 2002. The Peace Bell at UN headquarters in New York is rung to mark it.",
-      link: un('international-day-of-peace'),
+      link: un('international-day-peace'),
     },
   },
 
@@ -724,7 +724,7 @@ const ENTRIES: Entry[] = [
     tagline: 'Trick or treat? Definitely treat 🎃',
     fact: {
       title: 'Halloween',
-      body: 'Halloween grew out of Samhain, a Celtic festival marking the end of harvest. In Scotland and Ireland people carved turnips, not pumpkins, into lanterns.',
+      body: 'Halloween is thought to have roots in Samhain, a Gaelic festival marking the end of harvest. In Scotland and Ireland people traditionally carved turnips, not pumpkins, into lanterns.',
       link: wiki('Jack-o%27-lantern'),
     },
   },
@@ -759,8 +759,8 @@ const ENTRIES: Entry[] = [
     tagline: 'A moment of quiet at 11 o’clock.',
     fact: {
       title: 'Armistice Day',
-      body: "The Armistice that ended the fighting of the First World War took effect at 11am on 11 November 1918. The poppy became a symbol of remembrance thanks to John McCrae's poem 'In Flanders Fields', and the Royal British Legion held its first Poppy Appeal in 1921.",
-      link: RBL,
+      body: "The Armistice that ended the fighting of the First World War took effect at 11am on 11 November 1918. The poppy as a symbol of remembrance was inspired by John McCrae's poem 'In Flanders Fields', and Britain's first Poppy Day was held in 1921.",
+      link: wiki('Remembrance_poppy'),
     },
   },
   {
@@ -828,7 +828,7 @@ const ENTRIES: Entry[] = [
     tagline: 'Merry Christmas! 🎅',
     fact: {
       title: 'Christmas trees',
-      body: "Prince Albert helped make Christmas trees popular in Britain. A picture of Queen Victoria's family around their tree, printed in 1848, started the craze.",
+      body: "Prince Albert helped make Christmas trees popular in Britain. A picture of Queen Victoria's family around their tree, printed in 1848, gave the craze a big boost.",
       link: wiki('Christmas_tree'),
     },
   },
@@ -839,7 +839,7 @@ const ENTRIES: Entry[] = [
     tagline: 'Leftovers, sofa, puzzles. Perfect 🎁',
     fact: {
       title: 'Boxing Day',
-      body: "Boxing Day became a bank holiday in 1871. Nobody is completely sure where the name comes from – one idea is the 'Christmas box' of money or gifts given to servants and tradespeople.",
+      body: "Boxing Day became a bank holiday in England, Wales and Ireland in 1871. Nobody is completely sure where the name comes from – one idea is the 'Christmas box' of money or gifts given to servants and tradespeople.",
       link: wiki('Boxing_Day'),
     },
   },
@@ -868,29 +868,29 @@ const ENTRIES: Entry[] = [
 type Season = Omit<Entry, 'tier' | 'rule'>
 
 const SEASONS: Season[] = [
-  { id: 'season-jan', name: 'Frosty January', emoji: '❄️', piece: 'snowflake', palette: 'winter',
+  { id: 'season-jan', name: 'Frosty January', emoji: '❄️', piece: 'snowflake', palette: 'default',
     winWords: ['Cool!', 'Ice work!', 'Snow joke!'], tagline: 'Frosty mornings, cosy puzzles ❄️' },
-  { id: 'season-feb', name: 'Snowy February', emoji: '⛄', piece: 'snowman', palette: 'winter',
+  { id: 'season-feb', name: 'Snowy February', emoji: '⛄', piece: 'snowman', palette: 'default',
     winWords: ['Chilly genius!', 'Snow-tastic!', 'Frosty!'], tagline: 'Nearly spring. Hang in there ⛄' },
-  { id: 'season-mar', name: 'Early Spring', emoji: '🌼', piece: 'daffodil', palette: 'spring',
+  { id: 'season-mar', name: 'Early Spring', emoji: '🌼', piece: 'daffodil', palette: 'default',
     winWords: ['Blooming!', 'Fresh!', 'Sprung!'], tagline: 'Daffodils are up – spring is coming 🌼' },
-  { id: 'season-apr', name: 'April Blossom', emoji: '🌸', piece: 'blossom', palette: 'spring',
+  { id: 'season-apr', name: 'April Blossom', emoji: '🌸', piece: 'blossom', palette: 'default',
     winWords: ['Blossoming!', 'Lovely!', 'Petal power!'], tagline: 'Showers and flowers 🌸' },
-  { id: 'season-may', name: 'Buzzy May', emoji: '🐝', piece: 'bee', palette: 'spring',
+  { id: 'season-may', name: 'Buzzy May', emoji: '🐝', piece: 'bee', palette: 'default',
     winWords: ['Buzzing!', 'Bee-rilliant!', 'Sweet!'], tagline: 'Longer days, busy bees 🐝' },
-  { id: 'season-jun', name: 'Sunny June', emoji: '☀️', piece: 'sun', palette: 'summer',
+  { id: 'season-jun', name: 'Sunny June', emoji: '☀️', piece: 'sun', palette: 'default',
     winWords: ['Sunny!', 'Glowing!', 'Hot stuff!'], tagline: 'Sunshine and puzzles ☀️' },
-  { id: 'season-jul', name: 'High Summer', emoji: '🍦', piece: 'lolly', palette: 'summer',
+  { id: 'season-jul', name: 'High Summer', emoji: '🍦', piece: 'lolly', palette: 'default',
     winWords: ['Cool!', 'Scorchio!', 'Refreshing!'], tagline: 'Grab an ice lolly and a puzzle 🍦' },
-  { id: 'season-aug', name: 'Late Summer', emoji: '🧋', piece: 'icedCoffee', palette: 'summer',
+  { id: 'season-aug', name: 'Late Summer', emoji: '🧋', piece: 'icedCoffee', palette: 'default',
     winWords: ['Iced!', 'Chill!', 'Sip sip hooray!'], tagline: 'Iced coffee weather 🧋' },
-  { id: 'season-sep', name: 'Early Autumn', emoji: '🍂', piece: 'leaf', palette: 'autumn',
+  { id: 'season-sep', name: 'Early Autumn', emoji: '🍂', piece: 'leaf', palette: 'default',
     winWords: ['Crunchy!', 'Golden!', 'Leaf it to you!'], tagline: 'Crunchy leaves season 🍂' },
-  { id: 'season-oct', name: 'Golden October', emoji: '🍁', piece: 'leaf', palette: 'autumn',
+  { id: 'season-oct', name: 'Golden October', emoji: '🍁', piece: 'leaf', palette: 'default',
     winWords: ['Golden!', 'Toasty!', 'Cosy!'], tagline: 'Jumper weather 🍁' },
-  { id: 'season-nov', name: 'Cosy November', emoji: '🦔', piece: 'hedgehog', palette: 'autumn',
+  { id: 'season-nov', name: 'Cosy November', emoji: '🦔', piece: 'hedgehog', palette: 'default',
     winWords: ['Snug!', 'Prickly-perfect!', 'Cosy!'], tagline: 'Blankets, tea and puzzles 🦔' },
-  { id: 'season-dec', name: 'Wintry December', emoji: '⛄', piece: 'snowman', palette: 'winter',
+  { id: 'season-dec', name: 'Wintry December', emoji: '⛄', piece: 'snowman', palette: 'default',
     winWords: ['Frosty!', 'Cool!', 'Snow-tastic!'], tagline: 'Wrap up warm ⛄' },
 ]
 

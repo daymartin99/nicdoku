@@ -5,8 +5,9 @@ import { progress } from '../state/progress'
 import { settings, updateSettings } from '../state/settings'
 import { theme, pieceArt } from '../state/theme'
 import { formatTime } from '../stats/metrics'
-import { BackIcon, GearIcon } from './Icons'
+import { BackIcon, GearIcon, CloseIcon } from './Icons'
 import { Piece } from './Piece'
+import { assignColours } from '../engine/colours'
 
 export function Header({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const g = game.value!
@@ -39,26 +40,34 @@ export function Tracker() {
   const palette = theme.value.palette
   const solved = solvedRegions.value
   const n = g.puzzle.n
+  const colourOf = assignColours(n, g.puzzle.regions, palette)
   return (
     <div class="tracker-row">
       <div class="pill tracker" style={{ '--count': n } as never}>
         {Array.from({ length: n }, (_, r) => (
-          <span key={r} class={`trk${solved.has(r) ? ' on' : ''}`}>
-            {solved.has(r) ? (
-              <Piece art={pieceArt.value} />
-            ) : (
-              <span class="trk-dot" style={{ background: palette[r % palette.length] }} />
-            )}
+          <span
+            key={r}
+            class={`trk${solved.has(r) ? ' on' : ''}`}
+            style={{ '--c': palette[colourOf[r]] } as never}
+          >
+            {solved.has(r) && <Piece art={pieceArt.value} />}
           </span>
         ))}
       </div>
-      <div class="pill lives" aria-label={`${g.lives} lives left`}>
-        {Array.from({ length: LIVES }, (_, i) => (
-          <span key={i} class={`life${i < g.lives ? '' : ' lost'}`}>
-            <Heart />
-          </span>
-        ))}
-      </div>
+      {g.lives > 0 ? (
+        <div class="pill lives" aria-label={`${g.lives} lives left`}>
+          {Array.from({ length: LIVES }, (_, i) => (
+            <span key={i} class={`life${i < g.lives ? '' : ' lost'}`}>
+              <Heart />
+            </span>
+          ))}
+        </div>
+      ) : (
+        // no hearts left: a calm, factual count instead of three grey hearts
+        <div class="pill lives" aria-label={`${g.mistakes} slips`}>
+          <span class="mistake-count">{g.mistakes} slips</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -77,7 +86,10 @@ const Heart = () => (
 export function Rules() {
   if (!settings.value.showRules) return null
   return (
-    <div class="rules card" onClick={() => updateSettings({ showRules: false })} title="Tap to hide">
+    <div class="rules card">
+      <button class="rules-x" onClick={() => updateSettings({ showRules: false })} aria-label="Hide rules">
+        <CloseIcon size={14} />
+      </button>
       <div class="rule">
         <MiniGrid kind="colour" />
         <span>1 per colour</span>

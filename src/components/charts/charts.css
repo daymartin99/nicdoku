@@ -1,12 +1,14 @@
 /* Hand-rolled SVG charts + Stats screen bits. Uses the global tokens from index.css. */
 .chart { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--font); }
-.chart text { font-family: var(--font); fill: var(--ink-soft); font-size: 11px; font-weight: 500; }
+.chart text { font-family: var(--font); fill: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.chart text.direct { fill: var(--ink); }
+.chart.scrub { touch-action: pan-y; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .hit { fill: transparent; cursor: pointer; }
 .chart .tip rect { fill: var(--ink-strong); }
 .chart .tip text { fill: #fff; font-size: 12px; font-weight: 600; }
 .chart .sel { stroke: var(--ink-soft); stroke-dasharray: 3 3; }
-.chart-caption { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.chart-caption { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
 .chart-caption h3 { margin: 0; font-size: 17px; font-weight: 600; color: var(--ink); }
 
 .streak-dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
@@ -26,7 +28,7 @@
 .st-headline { font-size: 21px; font-weight: 600; color: var(--ink-strong); margin: 4px 0 0; }
 .st-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .st-chip {
-  min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card);
+  min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--card);
   box-shadow: var(--shadow); font-weight: 600; color: var(--ink-soft);
 }
 .st-chip[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); }
@@ -34,10 +36,14 @@
 .st-row:first-child { border-top: 0; }
 .st-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--card-soft); color: var(--ink-soft); }
 .st-tag.pb { background: var(--gold); color: #fff; }
-.st-tag.clean { color: var(--good); }
+.st-tag.clean { color: var(--good); display: inline-grid; place-items: center; }
 .st-day { font-size: 15px; font-weight: 600; color: var(--ink-soft); margin: 6px 4px 0; }
 .st-note { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--ink-soft); line-height: 1.4; }
-.st-note button { color: var(--ink-soft); flex: none; }
+.st-note button { color: var(--ink-soft); flex: none; min-width: 44px; min-height: 44px; display: grid; place-items: center; margin: -11px 0 0 -11px; }
 .st-note svg { width: 22px; height: 22px; }
 .st-empty { text-align: center; padding: 28px 16px; font-size: 18px; }
 .st-good { color: var(--good); font-weight: 600; }
+.chart-legend { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; }
+.dot-gold { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); flex: none; }
+.st-icon { display: inline-block; width: 16px; height: 16px; vertical-align: -2px; margin-right: 4px; color: #4a90c2; }
+.st-icon svg { width: 100%; height: 100%; display: block; }

@@ -50,6 +50,7 @@ export function startBreak() {
   // app was closed on the last win screen: wrap the break up properly
   if (s && !s.finishedAt && s.index >= SESSION_SIZE) {
     finishSession()
+    clearFinishedGame()
     go('session-done')
     return
   }
@@ -64,15 +65,16 @@ export function nextPuzzle() {
   const g = game.value
   const mode = g?.mode
   const s = progress.value.session
-  if (mode === 'session' && s && !s.finishedAt) {
+  if (mode === 'session' && s && s.id === g?.sessionId) {
+    // the last win already finished the session (at the real solve time)
     if (s.index >= SESSION_SIZE) {
-      finishSession()
+      if (!s.finishedAt) finishSession()
       clearFinishedGame()
       go('session-done')
       return
     }
     // keep the finished board + overlay up until the next puzzle is ready (no flash)
-    return launch(playSessionPuzzle)
+    if (!s.finishedAt) return launch(playSessionPuzzle)
   }
   clearFinishedGame()
   go('home')

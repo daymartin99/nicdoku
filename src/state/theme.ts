@@ -1,5 +1,5 @@
 import { signal, computed, effect } from '@preact/signals'
-import { kvGet } from '../db'
+import { kvGet, localDay } from '../db'
 import { resolveTheme } from '../themes/calendar'
 import type { FamilyData, PieceArt, ResolvedTheme } from '../themes/types'
 import { settings } from './settings'
@@ -16,9 +16,24 @@ export async function loadFamily() {
   }
 }
 
-export const resolved = computed<ResolvedTheme>(() =>
-  resolveTheme(today.value, family.value, settings.value.themeOverride),
-)
+/** what the calendar alone says today (no hand-picked override) */
+export const calendarResolved = computed<ResolvedTheme>(() => resolveTheme(today.value, family.value, null))
+
+/** true when a birthday/special owns today, so a hand-picked theme can't hide it */
+export const overrideLocked = computed(() => calendarResolved.value.isBigDay)
+
+/** today's hand-picked theme id, if she picked one today */
+export const activeOverrideId = computed<string | null>(() => {
+  const ov = settings.value.themeOverride
+  return ov && ov.day === localDay(today.value) ? ov.id : null
+})
+
+export const resolved = computed<ResolvedTheme>(() => {
+  const base = calendarResolved.value
+  const id = activeOverrideId.value
+  if (!id || overrideLocked.value) return base
+  return resolveTheme(today.value, family.value, id)
+})
 
 export const theme = computed(() => resolved.value.theme)
 

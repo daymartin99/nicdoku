@@ -12,7 +12,6 @@ import { ThemesScreen } from './screens/Themes'
 import { SettingsScreen } from './screens/Settings'
 import { AboutScreen } from './screens/About'
 import { OnboardingScreen } from './screens/Onboarding'
-import { InstallHint } from './components/InstallHint'
 import { UpdateToast } from './components/UpdateToast'
 import { lsGet, lsSet } from './db'
 import { familyVersion } from './backup'
@@ -65,12 +64,7 @@ export function App() {
   const r = route.value
   return (
     <Guard>
-      {r === 'home' && (
-        <>
-          <HomeScreen />
-          <InstallHint />
-        </>
-      )}
+      {r === 'home' && <HomeScreen />}
       {r === 'game' && <GameScreen />}
       {r === 'session-done' && <SessionDoneScreen />}
       {r === 'stats' && <StatsScreen />}

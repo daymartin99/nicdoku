@@ -12,21 +12,22 @@ export type Hint = {
   focus: number[]
   /** units to outline */
   units: UnitRef[]
-  /** what "Show me" does */
+  /** the placed piece that causes an 'around' step (outlined, not dimmed) */
+  source?: number
+  /** what "Do it for me" does */
   apply: { place: number[]; cross: number[]; clear: number[] }
 }
 
+// The board has no row numbers, so hints point at the highlight instead of making her count.
 const unitName = (u: UnitRef) =>
-  u.type === 'row' ? `row ${u.index + 1}` : u.type === 'col' ? `column ${u.index + 1}` : 'this colour'
+  u.type === 'row' ? 'this row' : u.type === 'col' ? 'this column' : 'this colour'
+
+const plural = (u: UnitRef) => (u.type === 'row' ? 'rows' : u.type === 'col' ? 'columns' : 'colours')
 
 function listUnits(us: UnitRef[]): string {
   if (!us.length) return ''
-  const type = us[0].type
-  if (type === 'region') return us.length === 1 ? 'this colour' : `these ${us.length} colours`
-  const word = type === 'row' ? 'rows' : 'columns'
   if (us.length === 1) return unitName(us[0])
-  const nums = us.map((u) => u.index + 1)
-  return `${word} ${nums.slice(0, -1).join(', ')} and ${nums[nums.length - 1]}`
+  return `the highlighted ${plural(us[0])}`
 }
 
 export function knowledgeState(p: Puzzle, marks: ArrayLike<number>): Uint8Array {
@@ -40,7 +41,7 @@ export function knowledgeState(p: Puzzle, marks: ArrayLike<number>): Uint8Array 
 export function describeStep(step: Step, n: number): string {
   switch (step.kind) {
     case 'around':
-      return 'A piece rules out every cell in its row, column and colour, plus the cells touching it. Cross these out.'
+      return 'This piece rules out every other cell in its row, column and colour, plus the cells touching it. Cross these out.'
     case 'single': {
       const u = step.sources[0]
       return u.type === 'region'
@@ -50,21 +51,22 @@ export function describeStep(step: Step, n: number): string {
     case 'confine': {
       const s = step.sources[0], t = step.targets[0]
       if (s.type === 'region') {
-        return `Every open cell of this colour sits in ${unitName(t)}. Its piece will use up ${unitName(t)}, so the other cells there can be crossed out.`
+        return `Every open cell of this colour sits in the highlighted ${t.type === 'row' ? 'row' : 'column'}. Its piece will use up that line, so the other cells there can be crossed out.`
       }
-      return `All the open cells in ${unitName(s)} are this colour. So this colour's piece is in ${unitName(s)}, and the rest of the colour can be crossed out.`
+      return `All the open cells in ${unitName(s)} are one colour. So that colour's piece is in ${unitName(s)}, and the rest of the colour can be crossed out.`
     }
     case 'pigeonhole': {
       const k = step.sources.length
       if (step.sources[0].type === 'region') {
-        return `These ${k} colours only fit inside ${listUnits(step.targets)}. They fill those ${k} lines, so nothing else there can hold a piece.`
+        const lines = plural(step.targets[0])
+        return `These ${k} colours can only go in ${listUnits(step.targets)}, so they fill them. Nothing else in those ${lines} can have a piece.`
       }
-      return `${cap(listUnits(step.sources))} can only use these ${k} colours. Those colours' pieces are used up there, so their other cells can be crossed out.`
+      return `${cap(listUnits(step.sources))} can only be filled by these ${k} colours. So those colours are used up there, and their other cells can be crossed out.`
     }
     case 'blocking':
       return `A piece here would block every open cell in ${unitName(step.targets[0])}. So this cell can't hold a piece.`
     case 'contradiction':
-      return 'Try imagining a piece here: it quickly leads to a line or colour with no room left. So this cell must be an X.'
+      return "Imagine a piece in this cell: soon a row, column or colour would have no room left. So this cell can't hold a piece."
   }
   void n
   return ''
@@ -99,6 +101,7 @@ export function computeHint(p: Puzzle, marks: ArrayLike<number>): Hint | null {
     text: describeStep(step, n),
     focus,
     units,
+    source: step.kind === 'around' ? step.cell : undefined,
     apply: { place: step.place, cross: step.eliminate, clear: [] },
   }
 }

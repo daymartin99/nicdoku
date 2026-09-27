@@ -1,0 +1,125 @@
+/* Home, Session done and Themes screens. Loaded after app.css (imported by screen modules),
+   so same-specificity selectors here override it. */
+
+/* ---------- shared ---------- */
+.link-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  align-self: center;
+  background: none;
+  box-shadow: none;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+}
+.link-btn:active { opacity: 0.7; }
+.link-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+.home-toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 50;
+  max-width: 488px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 6px 18px;
+  border-radius: 999px;
+  background: var(--ink-strong);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+}
+.toast-undo { min-height: 44px; padding: 0 16px; border-radius: 999px; color: #ffd98a; font-weight: 700; }
+
+/* ---------- Home ---------- */
+.home-hello .muted { color: var(--ink); font-weight: 600; }
+.home-hello h1.big-day-h { font-size: clamp(22px, 6.5vw, 28px); line-height: 1.15; }
+
+.theme-card { text-align: left; width: 100%; font: inherit; color: inherit; transition: transform 0.12s ease; }
+.theme-card:active { transform: scale(0.98); }
+.theme-card.big-day {
+  background: radial-gradient(circle at 20% 30%, #fff 40%, rgba(227, 185, 53, 0.14));
+  box-shadow: 0 0 0 3px var(--gold), var(--shadow-lg);
+}
+.theme-card.big-day .theme-art { width: 104px; height: 104px; animation: floaty 6s ease-in-out infinite; }
+@media (min-height: 760px) {
+  .theme-art { width: 96px; height: 96px; }
+  .theme-art.sm { width: 40px; height: 40px; }
+}
+@keyframes floaty { 50% { transform: translateY(-4px) rotate(-3deg); } }
+
+.home-confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 40; }
+.home-confetti i { animation-duration: 1.2s; animation-iteration-count: 1; }
+
+.cooldown-card .cooldown-time { font-size: 26px; font-weight: 700; color: var(--ink-strong); line-height: 1.15; }
+.cooldown-card .label { color: var(--ink); font-size: 16px; }
+
+.tick { display: inline-block; vertical-align: -2px; color: var(--good); }
+
+.fact-card { cursor: default; }
+.fact-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; min-height: 44px; }
+.fact-title { display: flex; flex-direction: column; gap: 2px; }
+.fact-title b { font-size: 18px; }
+.fact-head .chev { flex: none; font-size: 20px; color: var(--ink-soft); transition: rotate 0.2s ease; }
+.fact-head[aria-expanded='true'] .chev { rotate: 180deg; }
+
+.streak-card { flex-direction: column; align-items: stretch; gap: 8px; }
+.week-dots { display: flex; gap: 8px; }
+.week-dots i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); }
+.week-dots i.on { background: var(--good); border-color: var(--good); }
+.streak-card .headline { width: 100%; font-variant-numeric: tabular-nums; }
+
+.home-nav { margin-top: auto; }
+
+/* ---------- Session done ---------- */
+.done-hero { margin-top: 0; }
+.done-hero h1 { font-size: 32px; }
+.done-art { width: 80px; height: 80px; margin: 0 auto; display: grid; animation: bounceIn 0.6s cubic-bezier(.2, 1.5, .4, 1) both; }
+.done-art .piece { width: 100%; height: 100%; }
+.done-list { gap: 4px; }
+.done-next { text-align: center; margin: 0; font-size: 15px; }
+
+/* ---------- Themes ---------- */
+.theme-locked, .theme-pick-note { margin: 8px 0 0; font-size: 15px; }
+.theme-pick-note { margin: -6px 0 0; }
+.theme-tile { position: relative; }
+.theme-tile:disabled { opacity: 0.55; }
+.tt-name { font-size: 15px; }
+.tt-today {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fff0c2;
+  color: #a57800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-card.big-day .theme-art { animation: none; }
+  .home-confetti { display: none; }
+}
+.daily-card:disabled:not(.done) { opacity: 0.6; }
+
+/* rows as a grid so times line up whichever badges a row has */
+.done-list .done-row { display: grid; grid-template-columns: 44px 72px 44px 1fr; gap: 8px; align-items: center; }
+.done-row .diff-chip { justify-self: start; }
+.done-row .dr-n { width: auto; }
+.done-row .dr-time { margin-left: 0; text-align: right; }
+.done-row .dr-tags { min-width: 0; justify-content: flex-end; }
+
+/* shorter phones (Safari with toolbars): keep the whole summary + both buttons on one screen */
+@media (max-height: 760px) {
+  .session-done.screen { gap: 10px; }
+  .session-done .done-art { width: 56px; height: 56px; }
+  .session-done .done-hero h1 { font-size: 28px; }
+  .session-done .honest { font-size: 15px; margin: 0 8px; }
+  .session-done .done-stats { padding-block: 12px; }
+}

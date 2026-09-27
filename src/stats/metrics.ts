@@ -28,7 +28,8 @@ export type DailyPoint = {
   minutes: number
 }
 export type TrendPoint = { week: string; median: number | null; count: number; hasPB: boolean }
-export type Trend = { points: TrendPoint[]; improvementPct: number | null }
+/** baselineWeek: the week improvementPct is measured against (the first week with data). */
+export type Trend = { points: TrendPoint[]; improvementPct: number | null; baselineWeek: string | null }
 export type Totals = {
   puzzles: number
   cleanRate: number | null
@@ -51,6 +52,8 @@ export type SessionSummary = {
 }
 
 export const FREEZES_PER_WEEK = 2
+/** Earlier solves of a size needed before a faster one counts as a "new best". */
+export const PB_MIN_PRIOR = 3
 
 // ---------- small helpers ----------
 
@@ -142,26 +145,28 @@ export function medianTime(solves: SolveRecord[], n: number, lastK = 10): number
 
 /**
  * True when `rec` beats every earlier solve of the same size. `solves` should not
- * contain `rec` (it is ignored if it does). A first-ever solve of a size is not a
- * "new best" – there was nothing to beat.
+ * contain `rec` (it is ignored if it does). Needs at least PB_MIN_PRIOR earlier
+ * solves of that size – beating one or two attempts isn't much of a record.
  */
 export function isNewPB(solves: SolveRecord[], rec: SolveRecord): boolean {
   if (rec.mode === 'extra') return false
   const prior = perf(solves).filter((s) => s !== rec && s.n === rec.n && s.at < rec.at)
-  if (!prior.length) return false
+  if (prior.length < PB_MIN_PRIOR) return false
   return prior.every((s) => rec.timeMs < s.timeMs)
 }
 
-/** Solves that were a new best at the moment they happened. */
+/** Solves that were a new best at the moment they happened (same rule as isNewPB). */
 export function pbSet(solves: SolveRecord[]): Set<SolveRecord> {
   const best = new Map<number, number>()
+  const seen = new Map<number, number>()
   const out = new Set<SolveRecord>()
   for (const s of perf(solves).sort(byAt)) {
     const b = best.get(s.n)
-    if (b === undefined) best.set(s.n, s.timeMs)
-    else if (s.timeMs < b) {
+    const k = seen.get(s.n) ?? 0
+    seen.set(s.n, k + 1)
+    if (b === undefined || s.timeMs < b) {
       best.set(s.n, s.timeMs)
-      out.add(s)
+      if (b !== undefined && k >= PB_MIN_PRIOR) out.add(s)
     }
   }
   return out
@@ -284,13 +289,14 @@ export function trend(solves: SolveRecord[], n: number, weeks = 8, today: string
   }
   const withData = points.filter((p) => p.median !== null)
   let improvementPct: number | null = null
+  const baselineWeek = withData.length ? withData[0].week : null
   if (withData.length >= 2) {
     const a = withData[0].median!
     const b = withData[withData.length - 1].median!
     const pct = Math.round((100 * (a - b)) / a)
     if (pct > 0) improvementPct = pct
   }
-  return { points, improvementPct }
+  return { points, improvementPct, baselineWeek }
 }
 
 /** Day counts from the Monday `weeks-1` weeks ago through today (GitHub-style). */
@@ -371,7 +377,8 @@ export function cleanRun(solves: SolveRecord[]): number {
 
 /** One short, true, positive line for Home. */
 export function headline(solves: SolveRecord[], today: string): string {
-  if (!solves.length) return 'Welcome back'
+  // Nothing yet: say nothing rather than a guilt-tinged 'welcome back'.
+  if (!solves.length) return ''
   const p = perf(solves)
 
   // 1. a fresh personal best (today / yesterday)

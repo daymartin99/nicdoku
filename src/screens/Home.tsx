@@ -5,11 +5,16 @@ import { progress, inCooldown } from '../state/progress'
 import { settings } from '../state/settings'
 import { resolved, theme, pieceArt } from '../state/theme'
 import { startBreak, startDaily, startExtra, continueGame, loading, warmUp } from '../flow'
-import { allSolves, localDay, type SolveRecord } from '../db'
+import { allSolves, localDay, lsGet, lsSet, type SolveRecord } from '../db'
 import { headline, streak, formatTime } from '../stats/metrics'
 import { JUST_ONE_MORE, SESSION_SIZE } from '../config'
 import { Piece } from '../components/Piece'
+import { InstallHint } from '../components/InstallHint'
 import { ChartIcon, CalendarIcon, GearIcon } from '../components/Icons'
+import './home.css'
+
+const CONFETTI = ['#8E7BDB', '#F7A05E', '#8DD67E', '#F5A2DE', '#A8C8E6', '#FFC53D']
+const CONFETTI_KEY = 'nd:bigdayConfetti'
 
 function greeting(name: string) {
   const h = new Date().getHours()
@@ -17,42 +22,90 @@ function greeting(name: string) {
   return `${part}, ${name}`
 }
 
-function useNow(ms = 1000) {
+/** Re-renders every `ms`, and once more exactly at `wakeAt` (if it's in the future). */
+function useNow(ms: number, wakeAt = 0) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), ms)
     return () => clearInterval(id)
   }, [ms])
+  useEffect(() => {
+    const wait = wakeAt - Date.now()
+    if (wait <= 0) return
+    const id = setTimeout(() => setNow(Date.now()), wait + 50)
+    return () => clearTimeout(id)
+  }, [wakeAt])
   return now
+}
+
+function Tick() {
+  return (
+    <svg class="tick" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+      stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="done" role="img">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  )
+}
+
+/** One short burst the first time Home opens on a big day. */
+function BigDayConfetti() {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const day = localDay()
+    if (lsGet<string>(CONFETTI_KEY, '') === day) return
+    lsSet(CONFETTI_KEY, day)
+    setOn(true)
+    const id = setTimeout(() => setOn(false), 1800)
+    return () => clearTimeout(id)
+  }, [])
+  if (!on) return null
+  return (
+    <div class="confetti home-confetti" aria-hidden="true">
+      {Array.from({ length: 22 }, (_, i) => (
+        <i
+          key={i}
+          style={{
+            left: `${(i * 37) % 100}%`,
+            background: CONFETTI[i % CONFETTI.length],
+            animationDelay: `${(i % 7) * 0.05}s`,
+            transform: `rotate(${i * 29}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
 export function HomeScreen() {
   const [solves, setSolves] = useState<SolveRecord[] | null>(null)
   const [factOpen, setFactOpen] = useState(false)
-  const now = useNow()
+  const pr = progress.value
+  const now = useNow(inCooldown() ? 30_000 : 60_000, pr.cooldownUntil)
   useEffect(() => {
     allSolves().then(setSolves).catch(() => setSolves([]))
     warmUp()
   }, [])
 
-  const pr = progress.value
   const r = resolved.value
   const t = theme.value
   const g = game.value
+  const name = settings.value.name
   const today = localDay()
   const cooling = inCooldown(now)
   const sessionOpen = pr.session && !pr.session.finishedAt
   const dailyDone = pr.daily?.day === today
-  const st = solves ? streak(solves, today) : null
+  const otherGameOpen = !!g && !g.done && g.mode !== 'daily'
+  const st = solves && solves.length > 0 ? streak(solves, today) : null
   const head = solves ? headline(solves, today) : ''
-  const left = Math.max(0, pr.cooldownUntil - now)
-  const mins = Math.floor(left / 60000), secs = Math.floor((left % 60000) / 1000)
+  const herBirthday = r.isBigDay && t.id === 'birthday-queen'
+  const nextAt = new Date(pr.cooldownUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
 
   return (
     <div class="screen home">
+      {r.isBigDay && <BigDayConfetti />}
       <div class="topbar">
         <div class="home-hello">
-          <h1>{greeting(settings.value.name)}</h1>
+          <h1 class={r.isBigDay ? 'big-day-h' : undefined}>{r.isBigDay ? t.tagline || `Happy ${t.name}!` : greeting(name)}</h1>
           <span class="muted">Level {pr.level} · {pr.totalScore.toLocaleString('en-GB')} pts</span>
         </div>
         <button class="round-btn" onClick={() => go('settings')} aria-label="Settings">
@@ -60,34 +113,93 @@ export function HomeScreen() {
         </button>
       </div>
 
-      <div class={`theme-card card${r.isBigDay ? ' big-day' : ''}`} onClick={() => go('themes')}>
+      <button
+        type="button"
+        class={`theme-card card${r.isBigDay ? ' big-day' : ''}`}
+        aria-label={`Today's theme: ${t.name}. Change theme`}
+        onClick={() => go('themes')}
+      >
         <div class="theme-art">
           <Piece art={pieceArt.value} />
         </div>
         <div class="theme-text">
           <span class="label">Today's theme</span>
           <b>{t.name}</b>
-          {t.tagline && <span class="tagline">{t.tagline}</span>}
+          {t.tagline && !r.isBigDay && <span class="tagline">{t.tagline}</span>}
           {r.countdowns.map((c) => (
             <span key={c} class="countdown">{c}</span>
           ))}
         </div>
-        <div class="theme-swatches" aria-hidden="true">
-          {t.palette.slice(0, 5).map((c) => <i key={c} style={{ background: c }} />)}
+      </button>
+
+      <InstallHint />
+
+      {g && !g.done ? (
+        <button class="btn main-cta" onClick={continueGame}>
+          Continue puzzle
+          <small>{g.mode === 'daily' ? 'Daily puzzle' : `Level ${g.level} · ${g.puzzle.n}×${g.puzzle.n}`}</small>
+        </button>
+      ) : cooling && !sessionOpen ? (
+        <div class="card cooldown-card">
+          <span class="label">Nice break, {name}. Enjoy the rest of your day.</span>
+          <b class="cooldown-time">Next break from {nextAt}</b>
+          {pr.extrasUsed < JUST_ONE_MORE && (
+            <button class="link-btn" disabled={loading.value} onClick={startExtra}>
+              One more, just for fun
+            </button>
+          )}
         </div>
-      </div>
+      ) : (
+        <button class="btn main-cta" disabled={loading.value} onClick={startBreak}>
+          {loading.value
+            ? 'Shuffling…'
+            : sessionOpen
+              ? pr.session!.index >= SESSION_SIZE
+                ? 'See your break summary'
+                : `Resume break · ${pr.session!.index + 1} of ${SESSION_SIZE}`
+              : herBirthday
+                ? 'Start a birthday break'
+                : 'Start a break'}
+          <small>{sessionOpen ? '' : `${SESSION_SIZE} puzzles · about 10 min`}</small>
+        </button>
+      )}
+
+      <button
+        class={`card daily-card${dailyDone ? ' done' : ''}`}
+        disabled={loading.value || dailyDone || otherGameOpen}
+        onClick={startDaily}
+      >
+        <span class="daily-star">★</span>
+        <span class="daily-text">
+          <b>Daily puzzle</b>
+          <span class="muted">
+            {dailyDone ? (
+              <>
+                Solved in {formatTime(pr.daily!.timeMs)} <Tick />
+              </>
+            ) : otherGameOpen ? (
+              'Finish your puzzle first'
+            ) : (
+              'Same puzzle all day · tap to play'
+            )}
+          </span>
+        </span>
+      </button>
 
       {t.fact && (
-        <div class="card fact-card" onClick={() => setFactOpen(!factOpen)}>
-          <div class="fact-head">
-            <span class="label">Did you know?</span>
-            <b>{t.fact.title}</b>
-          </div>
+        <div class="card fact-card">
+          <button type="button" class="fact-head" aria-expanded={factOpen} onClick={() => setFactOpen(!factOpen)}>
+            <span class="fact-title">
+              <span class="label">Did you know?</span>
+              <b>{t.fact.title}</b>
+            </span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
           {factOpen && (
             <div class="fact-body fade-in">
               <p>{t.fact.body}</p>
               {t.fact.link && (
-                <a href={t.fact.link.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                <a href={t.fact.link.url} target="_blank" rel="noopener noreferrer">
                   {t.fact.link.label} ↗
                 </a>
               )}
@@ -96,45 +208,15 @@ export function HomeScreen() {
         </div>
       )}
 
-      {g && !g.done ? (
-        <button class="btn main-cta" onClick={continueGame}>
-          Continue puzzle
-        </button>
-      ) : cooling && !sessionOpen ? (
-        <div class="card cooldown-card">
-          <span class="label">Break done ✓</span>
-          <b class="big-num">
-            {mins}:{String(secs).padStart(2, '0')}
-          </b>
-          <span class="muted">until your next break unlocks</span>
-          {pr.extrasUsed < JUST_ONE_MORE && (
-            <button class="btn secondary small" disabled={loading.value} onClick={startExtra}>
-              Just one more (not counted)
-            </button>
-          )}
-        </div>
-      ) : (
-        <button class="btn main-cta" disabled={loading.value} onClick={startBreak}>
-          {loading.value ? 'Shuffling…' : sessionOpen ? pr.session!.index >= SESSION_SIZE ? 'See your break summary' : `Resume break · ${pr.session!.index + 1} of ${SESSION_SIZE}` : 'Start a break'}
-          <small>{sessionOpen ? '' : `${SESSION_SIZE} puzzles · about 10 min`}</small>
-        </button>
-      )}
-
-      <button class={`card daily-card${dailyDone ? ' done' : ''}`} disabled={loading.value || dailyDone} onClick={startDaily}>
-        <span class="daily-star">★</span>
-        <span class="daily-text">
-          <b>Daily puzzle</b>
-          <span class="muted">{dailyDone ? `Solved in ${formatTime(pr.daily!.timeMs)} ✓` : 'Same puzzle all day · tap to play'}</span>
-        </span>
-      </button>
-
-      {st && (
+      {st && st.activeLast7 > 0 && (
         <div class="card streak-card">
-          <div>
-            <span class="label">This week</span>
-            <b class="big-num">{st.activeLast7}<small>/7 days</small></b>
+          <span class="label">Last 7 days</span>
+          <div class="week-dots" role="img" aria-label={`Played on ${st.activeLast7} of the last 7 days`}>
+            {st.days.slice(-7).map((d) => (
+              <i key={d.day} class={d.played ? 'on' : ''} />
+            ))}
           </div>
-          <div class="headline">{head}</div>
+          {head && <div class="headline">{head}</div>}
         </div>
       )}
 

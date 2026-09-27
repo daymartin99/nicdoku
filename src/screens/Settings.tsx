@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { go } from '../router'
 import { settings, updateSettings } from '../state/settings'
+import { game, resetBoard } from '../state/game'
 import { BackIcon, CloseIcon, InfoIcon, PencilIcon } from '../components/Icons'
 import { Toggle } from '../components/Toggle'
 import { isIos, isStandalone, storagePersisted, checkPersistence, requestPersistence, updateReady, applyUpdate } from '../pwa'
@@ -50,8 +51,18 @@ export function SettingsScreen() {
 
   const say = (text: string, err = false, reload = false) => setMsg({ text, err, reload })
 
+  // Good news fades after a few seconds; errors and "reload now" stay until dismissed or replaced.
+  useEffect(() => {
+    if (!msg || msg.err || msg.reload) return
+    const t = setTimeout(() => setMsg(null), 4000)
+    return () => clearTimeout(t)
+  }, [msg])
+
+  // A ref as well as state, so a fast double-tap can't start the same job twice.
+  const busyRef = useRef(false)
   const run = async (fn: () => Promise<void>) => {
-    if (busy) return
+    if (busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     setMsg(null)
     try {
@@ -59,8 +70,17 @@ export function SettingsScreen() {
     } catch (e) {
       say((e as Error)?.message || 'Something went wrong.', true)
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
+  }
+
+  // ---- current puzzle
+  const g = game.value
+  const onRestart = () => {
+    if (!confirm('Start this puzzle again from an empty board?')) return
+    resetBoard()
+    go('game')
   }
 
   // ---- photos
@@ -109,6 +129,8 @@ export function SettingsScreen() {
   const onImportFamily = (e: Event) => {
     const f = takeFile(e)
     if (!f) return
+    const n = (family?.members.length ?? 0) + (family?.specials.length ?? 0)
+    if (n > 0 && !confirm(`Replace your ${n} birthday${n === 1 ? '' : 's'} and dates with the ones in this file?`)) return
     void run(async () => {
       const d = await importFamily(f)
       say(`Family loaded: ${d.members.length} birthdays and ${d.specials.length} special dates.`)
@@ -128,14 +150,34 @@ export function SettingsScreen() {
       </div>
 
       {msg && (
-        <div class={`set-msg${msg.err ? ' err' : ''}`} role="status">
-          {msg.text}
+        <div class={`set-msg${msg.err ? ' err' : ''}`} role={msg.err ? 'alert' : 'status'}>
+          <div class="set-msg-text">{msg.text}</div>
+          {!msg.reload && (
+            <button class="set-msg-x" aria-label="Dismiss" onClick={() => setMsg(null)}>
+              <CloseIcon size={18} />
+            </button>
+          )}
           {msg.reload && (
-            <div style={{ marginTop: 10 }}>
+            <div class="set-msg-actions">
               <button class="btn small" onClick={() => location.reload()}>Reload now</button>
             </div>
           )}
         </div>
+      )}
+
+      {g && !g.done && (
+        <section class="set-group">
+          <h2>This puzzle</h2>
+          <div class="card">
+            <button class="set-row" onClick={onRestart}>
+              <div class="grow">
+                <div class="title">Restart this puzzle</div>
+                <div class="sub">Clears the board so you can start it fresh</div>
+              </div>
+              <span aria-hidden="true" style={{ fontSize: 24, color: 'var(--ink-soft)' }}>›</span>
+            </button>
+          </div>
+        </section>
       )}
 
       {updateReady.value && (
@@ -201,12 +243,10 @@ export function SettingsScreen() {
             onChange={(v) => updateSettings({ patterns: v })}
           />
           <Toggle label="Sound" checked={s.sound} onChange={(v) => updateSettings({ sound: v })} />
-          <Toggle
-            label="Haptics"
-            note={isIos() ? "iPhone web apps can't vibrate, so this does nothing on iPhone" : undefined}
-            checked={s.haptics}
-            onChange={(v) => updateSettings({ haptics: v })}
-          />
+          {/* iPhone web apps can't vibrate, so the switch would do nothing there. */}
+          {!isIos() && (
+            <Toggle label="Haptics" checked={s.haptics} onChange={(v) => updateSettings({ haptics: v })} />
+          )}
         </div>
       </section>
 
@@ -250,7 +290,7 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <FamilySection family={family} busy={busy} onImport={onImportFamily} say={say} />
+      <FamilySection family={family} busy={busy} onImport={onImportFamily} say={say} run={run} />
 
       <section class="set-group">
         <h2>Your data</h2>
@@ -286,7 +326,7 @@ export function SettingsScreen() {
                     : 'Status unknown on this browser'}
               </div>
             </div>
-            {persisted === false && (
+            {persisted === false && standalone && (
               <button class="btn small secondary" onClick={() => void requestPersistence(true)}>Protect</button>
             )}
           </div>
@@ -318,12 +358,13 @@ type FamilyProps = {
   busy: boolean
   onImport: (e: Event) => void
   say: (text: string, err?: boolean) => void
+  run: (fn: () => Promise<void>) => Promise<void>
 }
 
 type Draft = { name: string; birthday: string; emoji: string }
 const EMPTY: Draft = { name: '', birthday: '', emoji: '' }
 
-function FamilySection({ family, busy, onImport, say }: FamilyProps) {
+function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const members = family?.members ?? []
@@ -338,7 +379,8 @@ function FamilySection({ family, busy, onImport, say }: FamilyProps) {
     setDraft(i === 'new' ? EMPTY : { ...EMPTY, ...members[i], emoji: members[i].emoji ?? '' })
   }
 
-  const commit = async () => {
+  const commit = () => {
+    if (busy) return
     const name = draft.name.trim()
     if (!name) return say('Add a name first.', true)
     if (!isIsoDate(draft.birthday)) return say('Pick a birthday date.', true)
@@ -347,56 +389,66 @@ function FamilySection({ family, busy, onImport, say }: FamilyProps) {
     if (editing === 'new') next.push(m)
     else if (typeof editing === 'number') next[editing] = m
     next.sort((a, b) => a.birthday.slice(5).localeCompare(b.birthday.slice(5)))
-    await save(next)
-    setEditing(null)
+    void run(async () => {
+      await save(next)
+      setEditing(null)
+    })
   }
 
-  const remove = async (i: number) => {
+  const remove = (i: number) => {
     if (!confirm(`Remove ${members[i].name}?`)) return
-    await save(members.filter((_, j) => j !== i))
+    void run(() => save(members.filter((_, j) => j !== i)))
   }
 
-  const removeSpecial = async (i: number) => {
+  const removeSpecial = (i: number) => {
     if (!confirm(`Remove "${specials[i].title}"?`)) return
-    await save(members, specials.filter((_, j) => j !== i))
+    void run(() => save(members, specials.filter((_, j) => j !== i)))
   }
 
-  const removeAll = async () => {
+  const removeAll = () => {
     if (!confirm('Remove all family birthdays and special dates from this phone?')) return
-    await setFamily(null)
-    setEditing(null)
+    void run(async () => {
+      await setFamily(null)
+      setEditing(null)
+    })
   }
 
   const form = (
     <div class="set-stack">
-      <input
-        class="text-input"
-        type="text"
-        placeholder="Name"
-        value={draft.name}
-        maxLength={30}
-        onInput={(e) => setDraft({ ...draft, name: (e.currentTarget as HTMLInputElement).value })}
-      />
-      <div style={{ display: 'flex', gap: 10 }}>
+      <label class="field">
+        <span class="label">Name</span>
         <input
           class="text-input"
-          type="date"
-          aria-label="Birthday"
-          value={draft.birthday}
-          onInput={(e) => setDraft({ ...draft, birthday: (e.currentTarget as HTMLInputElement).value })}
-        />
-        <input
-          class="text-input emoji"
           type="text"
-          placeholder="🎂"
-          aria-label="Emoji (optional)"
-          value={draft.emoji}
-          maxLength={8}
-          onInput={(e) => setDraft({ ...draft, emoji: (e.currentTarget as HTMLInputElement).value })}
+          value={draft.name}
+          maxLength={30}
+          onInput={(e) => setDraft({ ...draft, name: (e.currentTarget as HTMLInputElement).value })}
         />
+      </label>
+      <div class="field-row">
+        <label class="field grow">
+          <span class="label">Birthday</span>
+          <input
+            class="text-input"
+            type="date"
+            value={draft.birthday}
+            onInput={(e) => setDraft({ ...draft, birthday: (e.currentTarget as HTMLInputElement).value })}
+          />
+        </label>
+        <label class="field">
+          <span class="label">Emoji (optional)</span>
+          <input
+            class="text-input emoji"
+            type="text"
+            placeholder="🎂"
+            value={draft.emoji}
+            maxLength={8}
+            onInput={(e) => setDraft({ ...draft, emoji: (e.currentTarget as HTMLInputElement).value })}
+          />
+        </label>
       </div>
       <div class="btn-row">
-        <button class="btn small" onClick={() => void commit()}>Save</button>
+        <button class="btn small" onClick={commit} disabled={busy}>Save</button>
         <button class="btn small secondary" onClick={() => setEditing(null)}>Cancel</button>
       </div>
     </div>
@@ -428,7 +480,7 @@ function FamilySection({ family, busy, onImport, say }: FamilyProps) {
               <button class="icon-btn" aria-label={`Edit ${m.name}`} onClick={() => startEdit(i)}>
                 <PencilIcon size={20} />
               </button>
-              <button class="icon-btn" aria-label={`Remove ${m.name}`} onClick={() => void remove(i)}>
+              <button class="icon-btn" aria-label={`Remove ${m.name}`} onClick={() => remove(i)}>
                 <CloseIcon size={20} />
               </button>
             </div>
@@ -448,7 +500,7 @@ function FamilySection({ family, busy, onImport, say }: FamilyProps) {
                 · every year
               </div>
             </div>
-            <button class="icon-btn" aria-label={`Remove ${d.title}`} onClick={() => void removeSpecial(i)}>
+            <button class="icon-btn" aria-label={`Remove ${d.title}`} onClick={() => removeSpecial(i)}>
               <CloseIcon size={20} />
             </button>
           </div>
@@ -467,7 +519,7 @@ function FamilySection({ family, busy, onImport, say }: FamilyProps) {
             </label>
           </div>
           {(members.length > 0 || specials.length > 0) && (
-            <button class="btn small danger" onClick={() => void removeAll()}>Remove all</button>
+            <button class="btn small danger" onClick={removeAll} disabled={busy}>Remove all</button>
           )}
         </div>
       </div>

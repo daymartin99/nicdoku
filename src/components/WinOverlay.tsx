@@ -34,8 +34,8 @@ export function WinOverlay() {
   const score = useCountUp(w.score)
   const [ready, setReady] = useState(false)
   useEffect(() => {
-    // tiny delay stops an accidental double-tap skipping the moment
-    const id = setTimeout(() => setReady(true), 450)
+    // short delay stops an accidental double-tap skipping the moment
+    const id = setTimeout(() => setReady(true), 900)
     return () => clearTimeout(id)
   }, [])
 
@@ -45,29 +45,32 @@ export function WinOverlay() {
   else if (w.clean) line = 'A clean solve: no mistakes, no hints'
   else line = 'Solved. Nice work.'
 
-  const inSession = w.mode === 'session' && s && !s.finishedAt
+  // the last win finishes the session straight away, so match on id rather than finishedAt
+  const inSession = w.mode === 'session' && s && s.id === g?.sessionId
   const doneCount = s?.results.length ?? 0
   const last = inSession && doneCount >= SESSION_SIZE
   const cta = !inSession ? 'Done' : last ? 'Finish break' : `Next puzzle`
 
   return (
     <div class="win-overlay" role="dialog" aria-label="Puzzle solved">
-      <div class="rays" />
-      <div class="confetti" aria-hidden="true">
-        {Array.from({ length: 22 }, (_, i) => (
-          <i
-            key={i}
-            style={{
-              left: `${(i * 37) % 100}%`,
-              background: CONFETTI[i % CONFETTI.length],
-              animationDelay: `${(i % 7) * 0.08}s`,
-              transform: `rotate(${i * 29}deg)`,
-            }}
-          />
-        ))}
+      <div class="win-fx" aria-hidden="true">
+        <div class="rays" />
+        <div class="confetti">
+          {Array.from({ length: 22 }, (_, i) => (
+            <i
+              key={i}
+              style={{
+                left: `${(i * 37) % 100}%`,
+                background: CONFETTI[i % CONFETTI.length],
+                animationDelay: `${(i % 7) * 0.08}s`,
+                transform: `rotate(${i * 29}deg)`,
+              }}
+            />
+          ))}
+        </div>
       </div>
       <div class="win-content">
-        <h2 class="win-word">{word}</h2>
+        <h2 class={`win-word${word.length > 12 ? ' long' : ''}`}>{word}</h2>
         <div class="win-piece">
           <Piece art={pieceArt.value} />
         </div>
@@ -88,13 +91,22 @@ export function WinOverlay() {
         </div>
         <p class={`win-line${w.pb ? ' pb' : ''}`}>{line}</p>
         {inSession && (
-          <div class="session-dots big" aria-label={`${doneCount} of ${SESSION_SIZE} done`}>
-            {Array.from({ length: SESSION_SIZE }, (_, i) => (
-              <span key={i} class={i < doneCount ? 'd done' : 'd'} />
-            ))}
+          <div class="win-progress">
+            <div class="session-dots big" aria-hidden="true">
+              {Array.from({ length: SESSION_SIZE }, (_, i) => (
+                <span key={i} class={i < doneCount ? `d done${i === doneCount - 1 ? ' just' : ''}` : 'd'} />
+              ))}
+            </div>
+            <span class="win-count">
+              {Math.min(doneCount, SESSION_SIZE)} of {SESSION_SIZE} done
+            </span>
           </div>
         )}
-        <button class="btn win-btn" disabled={!ready || loading.value} onClick={() => nextPuzzle()}>
+        <button
+          class={`btn win-btn${ready ? ' ready' : ''}`}
+          disabled={loading.value}
+          onClick={() => ready && nextPuzzle()}
+        >
           {loading.value ? 'Shuffling…' : cta}
         </button>
       </div>

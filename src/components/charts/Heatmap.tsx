@@ -6,6 +6,8 @@ type Props = {
   /** consecutive days starting on a Monday (see metrics.heatmap) */
   data: { day: string; count: number }[]
   ariaLabel: string
+  /** days before this (YYYY-MM-DD, e.g. her first solve) draw nothing, not empty squares */
+  startDay?: string
 }
 
 const CELL = 18, GAP = 4, LEFT = 18, TOP = 34
@@ -24,7 +26,7 @@ function nice(day: string): string {
 }
 
 /** GitHub-style calendar: columns are weeks, rows Mon→Sun, warm orange scale. */
-export function Heatmap({ data, ariaLabel }: Props) {
+export function Heatmap({ data, ariaLabel, startDay }: Props) {
   const [sel, setSel] = useState<number | null>(null)
   if (!data.length) return null
   const weeks = Math.ceil(data.length / 7)
@@ -35,19 +37,23 @@ export function Heatmap({ data, ariaLabel }: Props) {
   const s = sel !== null ? data[sel] : null
 
   return (
-    <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel}>
+    // cap the width so a short (4-week) calendar doesn't blow up to giant squares
+    <svg class="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} style={{ maxWidth: `${Math.round(W * 1.3)}px` }}>
       <title>{ariaLabel}</title>
       {ROWS.map((r, i) => r && (
-        <text key={r} x={0} y={TOP + i * (CELL + GAP) + CELL - 5} font-size="10">{r}</text>
+        <text key={r} x={0} y={TOP + i * (CELL + GAP) + CELL - 4}>{r}</text>
       ))}
       {data.map((d, i) => {
         // month label above the first column that starts a month
         if (i % 7 !== 0) return null
         const dd = Number(d.day.slice(8, 10))
         if (i !== 0 && dd > 7) return null
-        return <text key={'m' + i} x={pos(i).x} y={TOP - 8} font-size="10">{MONTHS[Number(d.day.slice(5, 7)) - 1]}</text>
+        // the first column's label would collide with a month starting in the next column
+        if (i === 0 && data[7] && Number(data[7].day.slice(8, 10)) <= 7) return null
+        return <text key={'m' + i} x={pos(i).x} y={TOP - 10}>{MONTHS[Number(d.day.slice(5, 7)) - 1]}</text>
       })}
       {data.map((d, i) => {
+        if (startDay && d.day < startDay) return null
         const { x, y } = pos(i)
         const lv = level(d.count, max)
         return (

@@ -272,9 +272,9 @@ const daffodil = (() => {
 })()
 
 const leaf = svg(
-  `<path d="M18 82 C18 40 44 14 86 14 C86 56 60 82 18 82Z" fill="#E07B39" ${O}/>` +
+  `<path d="M18 82 C18 40 44 14 86 14 C86 56 60 82 18 82Z" fill="#B8432A" ${O}/>` +
     `<path d="M14 86 L30 70" fill="none" ${O}/>` +
-    `<path d="M30 70 Q52 50 70 30" fill="none" stroke="#B5541F" stroke-width="3.5" stroke-linecap="round"/>` +
+    `<path d="M30 70 Q52 50 70 30" fill="none" stroke="#E98A4F" stroke-width="3.5" stroke-linecap="round"/>` +
     face(54, 48, 0.72),
 )
 

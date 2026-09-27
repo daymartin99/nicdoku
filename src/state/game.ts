@@ -1,17 +1,20 @@
-// The live puzzle: marks, lives, timer, undo, hints. Saved to localStorage on every
-// move so she can close the app mid-puzzle and reopen straight into it.
+// The live puzzle: marks, lives, timer, undo, hints. Saved to localStorage shortly after
+// every move (debounced) so she can close the app mid-puzzle and reopen straight into it.
 
 import { signal, computed } from '@preact/signals'
 import { lsGet, lsSet, addSolve, allSolves, localDay, type SolveRecord } from '../db'
-import { LIVES } from '../config'
+import { LIVES, SESSION_SIZE } from '../config'
 import { M_EMPTY, M_PIECE, M_WRONG, M_X, computeHint, tidyCells, type Hint } from '../engine/hints'
 import type { Puzzle } from '../engine/types'
 import { settings } from './settings'
-import { progress, patchProgress, type SessionResult } from './progress'
+import { progress, patchProgress, finishSession, type SessionResult } from './progress'
 import { medianTime, fasterThanPct, isNewPB } from '../stats/metrics'
 import { feedback } from '../feedback'
 
 export type GameMode = 'session' | 'daily' | 'extra'
+
+/** One undo step: the board plus the hint bookkeeping, so undoing a Reveal gives the hint back. */
+export type HistoryEntry = { marks: number[]; hintCells: number[]; hints: number }
 
 export type GameState = {
   puzzle: Puzzle
@@ -29,7 +32,7 @@ export type GameState = {
   undos: number
   elapsedMs: number
   firstTapMs: number
-  history: number[][]
+  history: HistoryEntry[]
   hintCells: number[]
   done: boolean
 }
@@ -44,23 +47,74 @@ export type WinInfo = {
   mode: GameMode
 }
 
-const saved = lsGet<GameState | null>('nd:game', null)
-export const game = signal<GameState | null>(saved && !saved.done ? saved : null)
+const HISTORY_CAP = 50
+
+function migrate(g: GameState | null): GameState | null {
+  if (!g || g.done) return null
+  // older saves stored history as bare marks arrays
+  const history = (g.history as unknown[]).map((h) =>
+    Array.isArray(h) ? { marks: h as number[], hintCells: [], hints: g.hints } : (h as HistoryEntry),
+  )
+  return { ...g, history }
+}
+
+export const game = signal<GameState | null>(migrate(lsGet<GameState | null>('nd:game', null)))
 export const win = signal<WinInfo | null>(null)
 export const activeHint = signal<Hint | null>(null)
 export const lastEvent = signal<{ type: 'wrong' | 'place' | 'region' | 'none'; cell: number; t: number }>({
   type: 'none', cell: -1, t: 0,
 })
+/** A short calm status line under the board ("Nothing to tidy yet", out of hearts…). */
+export const status = signal<{ text: string; t: number } | null>(null)
+
+let statusT: ReturnType<typeof setTimeout> | undefined
+export function flash(text: string, ms = 2000) {
+  clearTimeout(statusT)
+  const s = { text, t: Date.now() }
+  status.value = s
+  statusT = setTimeout(() => {
+    if (status.value === s) status.value = null
+  }, ms)
+}
 
 let runStart = 0 // epoch ms when the clock last resumed (0 = paused)
+/** set by beginGesture; the first real change in that gesture records one undo step */
+let pendingSnap = false
+
+// ---- persistence (debounced: a fast swipe must not stringify the board 10× a second) ----
+
+let saveT: ReturnType<typeof setTimeout> | undefined
 
 function persist(g: GameState | null) {
   lsSet('nd:game', g)
 }
 
+/** Write the current game to storage now (app hidden, puzzle solved, …). */
+export function flushSave() {
+  if (saveT === undefined) return
+  clearTimeout(saveT)
+  saveT = undefined
+  persist(game.value)
+}
+
+function hintResolved(h: Hint, marks: number[]) {
+  return (
+    h.apply.cross.every((i) => marks[i] !== M_EMPTY) &&
+    h.apply.place.every((i) => marks[i] === M_PIECE) &&
+    h.apply.clear.every((i) => marks[i] !== M_X)
+  )
+}
+
 function commit(g: GameState) {
   game.value = g
-  persist(g)
+  clearTimeout(saveT)
+  saveT = setTimeout(() => {
+    saveT = undefined
+    persist(game.value)
+  }, 250)
+  // she followed the hint by hand: close it quietly
+  const h = activeHint.value
+  if (h && hintResolved(h, g.marks)) activeHint.value = null
 }
 
 export function elapsed(g = game.value): number {
@@ -70,10 +124,12 @@ export function elapsed(g = game.value): number {
 
 export function pauseClock() {
   const g = game.value
-  if (!g || !runStart) return
-  const e = elapsed(g)
-  runStart = 0
-  commit({ ...g, elapsedMs: e })
+  if (g && runStart) {
+    const e = elapsed(g)
+    runStart = 0
+    commit({ ...g, elapsedMs: e })
+  }
+  flushSave()
 }
 
 export function resumeClock() {
@@ -89,6 +145,16 @@ if (typeof document !== 'undefined') {
   })
   window.addEventListener('pagehide', pauseClock)
 }
+
+// Solve history cached while she plays, so a win can update progress before any await.
+let solveHistory: SolveRecord[] | null = null
+function loadHistory() {
+  solveHistory = null
+  allSolves()
+    .then((h) => (solveHistory = h))
+    .catch(() => (solveHistory = []))
+}
+if (game.value) loadHistory()
 
 export function startGame(p: {
   puzzle: Puzzle
@@ -114,12 +180,18 @@ export function startGame(p: {
   }
   win.value = null
   activeHint.value = null
+  status.value = null
+  pendingSnap = false
   runStart = Date.now()
   commit(g)
+  flushSave()
+  loadHistory()
 }
 
 export function abandonGame() {
   runStart = 0
+  clearTimeout(saveT)
+  saveT = undefined
   game.value = null
   activeHint.value = null
   persist(null)
@@ -138,9 +210,16 @@ export const solvedRegions = computed(() => {
   return out
 })
 
-function snapshot(g: GameState): number[][] {
-  const h = [...g.history, g.marks.slice()]
-  return h.length > 200 ? h.slice(-200) : h
+function snapshot(g: GameState): HistoryEntry[] {
+  const h = [...g.history, { marks: g.marks.slice(), hintCells: g.hintCells.slice(), hints: g.hints }]
+  return h.length > HISTORY_CAP ? h.slice(-HISTORY_CAP) : h
+}
+
+/** History for a board-gesture change: one undo step per gesture, only once something changes. */
+function gestureHistory(g: GameState, replaceLast = false): HistoryEntry[] {
+  const take = pendingSnap && !replaceLast
+  pendingSnap = false
+  return take ? snapshot(g) : g.history
 }
 
 function withFirstTap(g: GameState): GameState {
@@ -153,38 +232,51 @@ const isSolutionCell = (g: GameState, i: number) => {
   return g.puzzle.solution[(i / n) | 0] === i % n
 }
 
-/** Begin a gesture (tap or drag): records one undo step. */
+/** Begin a gesture (tap or drag). The undo step is taken lazily, on the first real change. */
 export function beginGesture() {
   const g = game.value
   if (!g || g.done) return
-  activeHint.value = null
-  commit({ ...withFirstTap(g), history: snapshot(g) })
+  pendingSnap = true
+  if (g.firstTapMs < 0) commit(withFirstTap(g))
 }
 
 /** Set a cell to X or empty (drag + tap). Pieces and orange X's are untouched. */
 export function setCross(i: number, on: boolean) {
+  setCrossMany([i], on)
+}
+
+/** Set several cells at once (one drag step): a single commit. */
+export function setCrossMany(cells: number[], on: boolean) {
   const g = game.value
   if (!g || g.done) return
   if (g.drafts) {
     const d = g.drafts.slice()
-    if (g.marks[i] !== M_EMPTY) return
-    d[i] = on ? 1 : 0
-    commit({ ...g, drafts: d })
+    let changed = false
+    for (const i of cells) {
+      if (g.marks[i] !== M_EMPTY) continue
+      const v = on ? 1 : 0
+      if (d[i] !== v) { d[i] = v; changed = true }
+    }
+    if (changed) commit({ ...g, drafts: d })
     return
   }
-  const m = g.marks[i]
-  if (m === M_PIECE || m === M_WRONG) return
   const next = on ? M_X : M_EMPTY
-  if (m === next) return
-  const marks = g.marks.slice()
-  marks[i] = next
-  commit({ ...g, marks })
+  let marks: number[] | null = null
+  for (const i of cells) {
+    const m = g.marks[i]
+    if (m === M_PIECE || m === M_WRONG || m === next) continue
+    marks ??= g.marks.slice()
+    marks[i] = next
+  }
+  if (!marks) return
+  commit({ ...g, marks, history: gestureHistory(g) })
 }
 
 export function removePiece(i: number) {
   const g = game.value
   if (!g || g.done) return
   if (g.drafts) {
+    if (!g.drafts[i]) return
     const d = g.drafts.slice()
     d[i] = 0
     commit({ ...g, drafts: d })
@@ -193,15 +285,18 @@ export function removePiece(i: number) {
   if (g.marks[i] !== M_PIECE) return
   const marks = g.marks.slice()
   marks[i] = M_EMPTY
-  commit({ ...g, marks, hintCells: g.hintCells.filter((c) => c !== i) })
+  commit({ ...g, marks, history: gestureHistory(g), hintCells: g.hintCells.filter((c) => c !== i) })
 }
 
-/** Place a piece: checked instantly against the unique solution. */
-export function placePiece(i: number, fromHint = false) {
+/**
+ * Place a piece: checked instantly against the unique solution.
+ * `replaceLast`: second tap of a double-tap, whose first tap already recorded the undo step.
+ */
+export function placePiece(i: number, fromHint = false, replaceLast = false) {
   const g = game.value
   if (!g || g.done) return
   if (g.drafts && !fromHint) {
-    if (g.marks[i] !== M_EMPTY && g.marks[i] !== M_X) return
+    if (g.marks[i] !== M_EMPTY) return
     const d = g.drafts.slice()
     d[i] = 2
     commit({ ...g, drafts: d })
@@ -209,17 +304,20 @@ export function placePiece(i: number, fromHint = false) {
   }
   const m = g.marks[i]
   if (m === M_PIECE || m === M_WRONG) return
+  // hint/reveal paths snapshot before calling in
+  const history = fromHint ? g.history : gestureHistory(g, replaceLast)
   const marks = g.marks.slice()
   if (!isSolutionCell(g, i)) {
     marks[i] = M_WRONG
     const lives = Math.max(0, g.lives - 1)
-    commit({ ...g, marks, lives, mistakes: g.mistakes + 1 })
+    commit({ ...g, marks, history, lives, mistakes: g.mistakes + 1 })
     lastEvent.value = { type: 'wrong', cell: i, t: Date.now() }
     feedback('wrong')
+    if (g.lives === 1) flash("Out of hearts. Keep going, this one just won't count as clean.", 4500)
     return
   }
   marks[i] = M_PIECE
-  let next: GameState = { ...g, marks }
+  let next: GameState = { ...g, marks, history }
   if (settings.value.autoX) {
     for (const j of tidyCells(g.puzzle, marks)) marks[j] = M_X
   }
@@ -233,16 +331,19 @@ export function placePiece(i: number, fromHint = false) {
 export function undo() {
   const g = game.value
   if (!g || g.done || !g.history.length) return
+  pendingSnap = false
   const prev = g.history[g.history.length - 1]
   // orange X's are facts she already paid for: keep them through undo
-  const marks = prev.map((m, i) => (g.marks[i] === M_WRONG ? M_WRONG : m))
+  const marks = prev.marks.map((m, i) => (g.marks[i] === M_WRONG ? M_WRONG : m))
+  const hintCells = prev.hintCells.filter((c) => marks[c] === M_PIECE)
   activeHint.value = null
-  commit({ ...g, marks, history: g.history.slice(0, -1), undos: g.undos + 1 })
+  commit({ ...g, marks, hintCells, hints: prev.hints, history: g.history.slice(0, -1), undos: g.undos + 1 })
 }
 
 export function resetBoard() {
   const g = game.value
   if (!g || g.done) return
+  pendingSnap = false
   const marks = g.marks.map((m) => (m === M_WRONG ? M_WRONG : M_EMPTY))
   activeHint.value = null
   commit({ ...g, marks, history: snapshot(g), drafts: g.drafts ? marks.map(() => 0) : null, hintCells: [] })
@@ -259,12 +360,16 @@ export function applyDrafts() {
   const g = game.value
   if (!g || !g.drafts) return
   const d = g.drafts
+  pendingSnap = false
   commit({ ...g, drafts: null, history: snapshot(g) })
+  // only drafts she could see (on empty cells) take effect
+  const crosses: number[] = []
   d.forEach((v, i) => {
-    if (v === 1) setCross(i, true)
+    if (v === 1 && g.marks[i] === M_EMPTY) crosses.push(i)
   })
+  setCrossMany(crosses, true)
   d.forEach((v, i) => {
-    if (v === 2) placePiece(i)
+    if (v === 2 && game.value!.marks[i] === M_EMPTY) placePiece(i)
   })
 }
 
@@ -276,15 +381,22 @@ export function showHint() {
   activeHint.value = computeHint(g.puzzle, g.marks)
 }
 
+/** Clear only the pencil marks at cells that just changed, so her pencil layer survives. */
+function keepDrafts(g: GameState, changed: Set<number>) {
+  return g.drafts && g.drafts.map((v, i) => (changed.has(i) ? 0 : v))
+}
+
 export function applyHint() {
   const g = game.value
   const h = activeHint.value
   if (!g || !h) return
+  pendingSnap = false
   const marks = g.marks.slice()
+  const changed = new Set<number>([...h.apply.clear, ...h.apply.cross, ...h.apply.place])
   for (const i of h.apply.clear) marks[i] = M_EMPTY
   for (const i of h.apply.cross) if (marks[i] === M_EMPTY) marks[i] = M_X
-  commit({ ...g, marks, history: snapshot(g), hints: g.hints + 1, drafts: null })
   activeHint.value = null
+  commit({ ...g, marks, history: snapshot(g), hints: g.hints + 1, drafts: keepDrafts(g, changed) })
   for (const i of h.apply.place) placePiece(i, true)
 }
 
@@ -303,27 +415,25 @@ export function revealPiece() {
     if (open < bestOpen) { bestOpen = open; best = i }
   }
   if (best < 0) return
+  pendingSnap = false
   const marks = g.marks.slice()
   if (marks[best] === M_X) marks[best] = M_EMPTY
-  commit({ ...g, marks, history: snapshot(g), hints: g.hints + 1, drafts: null })
   activeHint.value = null
+  commit({ ...g, marks, history: snapshot(g), hints: g.hints + 1, drafts: keepDrafts(g, new Set([best])) })
   placePiece(best, true)
 }
 
-/** Cross out everything the placed pieces already rule out. */
+/** Cross out everything the placed pieces already rule out. Returns how many cells changed. */
 export function tidyUp(): number {
   const g = game.value
   if (!g || g.done) return 0
-  let cells = tidyCells(g.puzzle, g.marks)
-  if (!cells.length) {
-    const h = computeHint(g.puzzle, g.marks)
-    cells = h?.apply.cross ?? []
-  }
+  const cells = tidyCells(g.puzzle, g.marks)
   if (!cells.length) return 0
+  pendingSnap = false
   const marks = g.marks.slice()
   for (const i of cells) if (marks[i] === M_EMPTY) marks[i] = M_X
-  commit({ ...g, marks, history: snapshot(g), assists: g.assists + 1 })
   activeHint.value = null
+  commit({ ...g, marks, history: snapshot(g), assists: g.assists + 1 })
   return cells.length
 }
 
@@ -339,6 +449,8 @@ export function computeScore(p: Puzzle, timeMs: number, clean: boolean, hints: n
   return Math.round(((base + speed + cleanBonus) * hintFactor) / 5) * 5
 }
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
 async function checkWin() {
   const g = game.value
   if (!g || g.done) return
@@ -349,16 +461,20 @@ async function checkWin() {
   // cross out the rest so the finished board looks complete
   const marks = g.marks.map((m) => (m === M_EMPTY ? M_X : m))
   const done: GameState = { ...g, marks, done: true, elapsedMs: timeMs, drafts: null }
-  commit(done)
   activeHint.value = null
+  commit(done)
+  flushSave()
   feedback('win')
+  const beat = sleep(700) // let her see the solved board before the overlay
 
   const clean = g.mistakes === 0 && g.hints === 0
-  let history: SolveRecord[] = []
-  try {
-    history = await allSolves()
-  } catch {
-    /* IndexedDB unavailable – still celebrate */
+  let history = solveHistory
+  if (!history) {
+    try {
+      history = await allSolves()
+    } catch {
+      history = [] // IndexedDB unavailable – still celebrate
+    }
   }
   const counted = history.filter((s) => s.mode !== 'extra')
   const median = medianTime(counted, g.puzzle.n)
@@ -384,12 +500,8 @@ async function checkWin() {
   }
   const pb = g.mode !== 'extra' && isNewPB(counted, rec)
   const fasterPct = g.mode !== 'extra' ? fasterThanPct(counted, rec) : null
-  try {
-    await addSolve(rec)
-  } catch {
-    /* keep going */
-  }
 
+  // progress first (synchronous), so closing the app now can't replay or lose this solve
   const pr = progress.value
   if (g.mode === 'session' && pr.session) {
     const result: SessionResult = {
@@ -400,16 +512,29 @@ async function checkWin() {
       totalScore: pr.totalScore + score,
       session: { ...pr.session, index: pr.session.index + 1, results: [...pr.session.results, result] },
     })
+    // the break ends at the real solve time, not whenever she taps "Finish break"
+    if (pr.session.index + 1 >= SESSION_SIZE && !pr.session.finishedAt) finishSession()
   } else if (g.mode === 'daily') {
     patchProgress({ daily: { day: localDay(), timeMs, clean, score }, totalScore: pr.totalScore + score })
   } else {
     patchProgress({ extrasUsed: pr.extrasUsed + 1 })
   }
+
+  const statsWork = addSolve(rec)
+    .then(() => {
+      solveHistory = [...history, rec]
+    })
+    .catch(() => {
+      /* keep going */
+    })
+  await Promise.all([statsWork, beat])
   win.value = { timeMs, score, clean, pb, fasterPct, median, mode: g.mode }
 }
 
 export function clearFinishedGame() {
   win.value = null
   game.value = null
+  clearTimeout(saveT)
+  saveT = undefined
   persist(null)
 }

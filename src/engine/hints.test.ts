@@ -11,6 +11,9 @@ function playWithHints(n: number, seed: string, sabotage = false) {
     const h = computeHint(p, marks)
     expect(h, 'hint should always exist before solved').not.toBeNull()
     expect(h!.text.length).toBeGreaterThan(10)
+    // the board has no row/column numbers, so hints must never make her count
+    expect(h!.text).not.toMatch(/(row|column)s? d/)
+    if (h!.source !== undefined) expect(marks[h!.source]).toBe(M_PIECE)
     for (const i of h!.apply.clear) marks[i] = M_EMPTY
     for (const i of h!.apply.cross) {
       // a hint must never cross out a solution cell
@@ -32,6 +35,16 @@ describe('hints', () => {
     })
   }
   it('detects and clears a wrong X', () => playWithHints(8, 'sabotage', true))
+
+  it("an 'around' hint marks the piece that causes it", () => {
+    const p = generatePuzzle(7, 'around')
+    const marks = new Array(49).fill(M_EMPTY)
+    const src = 3 * 7 + p.solution[3]
+    marks[src] = M_PIECE
+    const h = computeHint(p, marks)!
+    expect(h.source).toBe(src)
+    expect(h.text).toMatch(/^This piece rules out/)
+  })
 
   it('tidy never crosses a solution cell', () => {
     const p = generatePuzzle(9, 'tidy')

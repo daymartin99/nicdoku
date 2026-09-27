@@ -28,14 +28,19 @@ async function doubleTap(page: Page, index: number) {
   }
 }
 
+/** A real (non-pencil) piece is showing in this cell. Read from the DOM: saves are debounced. */
+async function hasPiece(page: Page, index: number) {
+  return (await page.locator('.board .cell').nth(index).locator(':scope > .piece').count()) > 0
+}
+
 async function solveCurrent(page: Page) {
   await expect(page.locator('.board')).toBeVisible()
   const g = await current(page)
   const n = g.puzzle.n
   for (let r = 0; r < n; r++) {
     const i = r * n + g.puzzle.solution[r]
-    const now = await current(page)
-    if (now && now.marks[i] === 2) continue
+    // a double-tap on a placed piece removes it, so skip ones already there
+    if (await hasPiece(page, i)) continue
     await doubleTap(page, i)
     await page.waitForTimeout(40)
   }
@@ -67,7 +72,7 @@ test('a full break: 5 puzzles → break done → cooldown', async ({ page }) => 
   }
   await expect(page.getByRole('heading', { name: 'Break done' })).toBeVisible()
   await page.getByRole('button', { name: 'Back to home' }).click()
-  await expect(page.getByText('until your next break unlocks')).toBeVisible()
+  await expect(page.getByText(/Next break from/)).toBeVisible()
   const solves = await page.evaluate(
     () =>
       new Promise<number>((res) => {
@@ -94,12 +99,14 @@ test('wrong piece costs a heart and leaves an orange X, never fails', async ({ p
     const r = Math.floor(i / n)
     if (g.puzzle.solution[r] === i % n) continue
     await doubleTap(page, i)
-    await page.waitForTimeout(360)
+    await page.waitForTimeout(450)
     wrong++
   }
   const after = await current(page)
   expect(after.marks.filter((m) => m === 3).length).toBe(4)
-  await expect(page.locator('.life.lost')).toHaveCount(3)
+  // at zero hearts the pill shows a calm slip count instead of three grey hearts
+  await expect(page.locator('.mistake-count')).toHaveText('4 slips')
+  await expect(page.getByText(/Out of hearts/)).toBeVisible()
   await solveCurrent(page) // can still finish
   await expect(page.locator('.win-line')).not.toHaveText(/clean solve/)
 })
@@ -145,16 +152,24 @@ test('stress: random taps, drags, undo, hints, then solve — no errors', async 
       await page.mouse.move(box.x + rand() * box.width, box.y + rand() * box.height, { steps: 6 })
       await page.mouse.up()
     } else if (action < 0.9) {
-      await page.getByRole('button', { name: /Undo/ }).click({ trial: false }).catch(() => {})
+      await page.getByRole('button', { name: 'Undo' }).click({ timeout: 1000 }).catch(() => {})
     } else {
       await page.getByRole('button', { name: 'Cross out impossible cells' }).click()
     }
   }
   await page.getByRole('button', { name: 'Explain the next step' }).click()
   await expect(page.locator('.hint-bubble')).toBeVisible()
-  await page.getByRole('button', { name: 'Show me' }).click()
-  // clear board to known state and solve
-  await page.getByRole('button', { name: /Reset/ }).click()
+  await page.getByRole('button', { name: 'Do it for me' }).click()
+  // Reveal needs a confirming second tap
+  const reveal = page.getByRole('button', { name: 'Place a piece for me' })
+  await reveal.click()
+  await expect(reveal).toContainText('Tap again')
+  await reveal.click()
+  await expect(reveal).toContainText('Reveal')
+  // clear board to known state (restart asks first) and solve
+  page.once('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Restart this puzzle' }).click()
+  await expect(page.locator('.board .cell > .piece')).toHaveCount(0)
   await solveCurrent(page)
   expect(errors).toEqual([])
 })
