@@ -3,7 +3,7 @@ import { go } from '../router'
 import { game } from '../state/game'
 import { progress, inCooldown } from '../state/progress'
 import { settings } from '../state/settings'
-import { resolved, theme, pieceArt } from '../state/theme'
+import { resolved, theme, pieceArt, nextPersonal } from '../state/theme'
 import { startBreak, startDaily, startExtra, continueGame, loading, warmUp } from '../flow'
 import { allSolves, localDay, lsGet, lsSet, type SolveRecord } from '../db'
 import { headline, streak, formatTime } from '../stats/metrics'
@@ -126,6 +126,9 @@ export function HomeScreen() {
           <span class="label">Today's theme</span>
           <b>{t.name}</b>
           {t.tagline && !r.isBigDay && <span class="tagline">{t.tagline}</span>}
+          {!r.isBigDay && r.countdowns.length === 0 && nextPersonal.value && (
+            <span class="countdown soon">{nextPersonal.value}</span>
+          )}
           {r.countdowns.map((c) => (
             <span key={c} class="countdown">{c}</span>
           ))}

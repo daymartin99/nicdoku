@@ -1,6 +1,6 @@
 import { signal, computed, effect } from '@preact/signals'
 import { kvGet, localDay } from '../db'
-import { resolveTheme } from '../themes/calendar'
+import { resolveTheme, upcoming } from '../themes/calendar'
 import type { FamilyData, PieceArt, ResolvedTheme } from '../themes/types'
 import { settings } from './settings'
 
@@ -36,6 +36,19 @@ export const resolved = computed<ResolvedTheme>(() => {
 })
 
 export const theme = computed(() => resolved.value.theme)
+
+/** Next family birthday / special date within 6 weeks, e.g. "🎂 David's birthday in 28 days". */
+export function nextPersonalLine(from: Date, fam: FamilyData | null, days = 42): string | null {
+  if (!fam) return null
+  const next = upcoming(from, fam, days).find((u) => u.themeId.startsWith('birthday') || u.themeId === 'special')
+  if (!next) return null
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  const d = Math.round((new Date(next.date + 'T00:00:00').getTime() - start.getTime()) / 86400000)
+  const when = d <= 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`
+  return `${next.emoji} ${next.title} ${when}`
+}
+
+export const nextPersonal = computed(() => nextPersonalLine(today.value, family.value))
 
 /** piece actually drawn on the board (her photo wins if chosen) */
 export const pieceArt = computed<PieceArt>(() =>

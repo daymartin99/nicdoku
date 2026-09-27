@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { go } from '../router'
+import { nextPersonalLine } from '../state/theme'
 import { settings, updateSettings } from '../state/settings'
 import { game, resetBoard } from '../state/game'
 import { BackIcon, CloseIcon, InfoIcon, PencilIcon } from '../components/Icons'
 import { Toggle } from '../components/Toggle'
 import { isIos, isStandalone, storagePersisted, checkPersistence, requestPersistence, updateReady, applyUpdate } from '../pwa'
 import {
-  exportBackup, importBackup, importFamily, getFamily, setFamily, isIsoDate,
+  exportBackup, importBackup, importFamily, importFamilyCode, getFamily, setFamily, isIsoDate,
   savePhoto, listPhotos, deletePhoto, familyVersion, photosVersion, type Photo,
 } from '../backup'
 import type { FamilyData, FamilyMember } from '../themes/types'
@@ -133,7 +134,7 @@ export function SettingsScreen() {
     if (n > 0 && !confirm(`Replace your ${n} birthday${n === 1 ? '' : 's'} and dates with the ones in this file?`)) return
     void run(async () => {
       const d = await importFamily(f)
-      say(`Family loaded: ${d.members.length} birthdays and ${d.specials.length} special dates.`)
+      say(familyLoadedMsg(d))
     })
   }
 
@@ -353,6 +354,14 @@ export function SettingsScreen() {
 
 // ------------------------------------------------------------------ family
 
+/** Confirmation that proves it worked, e.g. "8 birthdays and 1 special date loaded. Next: 🎂 David's birthday in 27 days" */
+function familyLoadedMsg(d: FamilyData): string {
+  const b = `${d.members.length} birthday${d.members.length === 1 ? '' : 's'}`
+  const sp = d.specials.length ? ` and ${d.specials.length} special date${d.specials.length === 1 ? '' : 's'}` : ''
+  const next = nextPersonalLine(new Date(), d, 400)
+  return `${b}${sp} loaded.${next ? ` Next: ${next}` : ''}`
+}
+
 type FamilyProps = {
   family: FamilyData | null
   busy: boolean
@@ -367,6 +376,8 @@ const EMPTY: Draft = { name: '', birthday: '', emoji: '' }
 function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [draft, setDraft] = useState<Draft>(EMPTY)
+  const [pasting, setPasting] = useState(false)
+  const [code, setCode] = useState('')
   const members = family?.members ?? []
   const specials = family?.specials ?? []
 
@@ -403,6 +414,18 @@ function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
   const removeSpecial = (i: number) => {
     if (!confirm(`Remove "${specials[i].title}"?`)) return
     void run(() => save(members, specials.filter((_, j) => j !== i)))
+  }
+
+  const importCode = () => {
+    if (busy || !code.trim()) return
+    const n = members.length + specials.length
+    if (n > 0 && !confirm(`Replace your ${n} birthday${n === 1 ? '' : 's'} and dates with the ones in this code?`)) return
+    void run(async () => {
+      const d = await importFamilyCode(code)
+      setCode('')
+      setPasting(false)
+      say(familyLoadedMsg(d))
+    })
   }
 
   const removeAll = () => {
@@ -517,7 +540,30 @@ function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
               <input type="file" accept="application/json,.json" onChange={onImport} disabled={busy} />
               Import family file
             </label>
+            <button class="btn small secondary" onClick={() => setPasting(!pasting)} disabled={busy} aria-expanded={pasting}>
+              Paste a code
+            </button>
           </div>
+          {pasting && (
+            <div class="set-stack">
+              <label class="field">
+                <span class="label">Paste the code David sent you</span>
+                <textarea
+                  class="text-input code-input"
+                  rows={4}
+                  value={code}
+                  placeholder="NICDOKU1:…"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck={false}
+                  onInput={(e) => setCode((e.currentTarget as HTMLTextAreaElement).value)}
+                />
+              </label>
+              <button class="btn small" onClick={importCode} disabled={busy || !code.trim()}>
+                Load birthdays
+              </button>
+            </div>
+          )}
           {(members.length > 0 || specials.length > 0) && (
             <button class="btn small danger" onClick={removeAll} disabled={busy}>Remove all</button>
           )}

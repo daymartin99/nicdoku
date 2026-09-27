@@ -239,6 +239,40 @@ export function validateFamily(v: unknown): FamilyData | null {
 }
 
 const FAMILY_FILE_ERR = "That isn't a Nicdoku family file. Ask David to send it again."
+const FAMILY_CODE_PREFIX = 'NICDOKU1:'
+
+/** Text code David can message her: prefix + base64 of the family JSON (UTF-8, emoji-safe). */
+export function encodeFamilyCode(data: FamilyData): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(data))
+  let bin = ''
+  for (const b of bytes) bin += String.fromCharCode(b)
+  return FAMILY_CODE_PREFIX + btoa(bin)
+}
+
+/** Accepts a NICDOKU1: code or pasted family.json text. Whitespace/line breaks from messaging apps are ignored. */
+export function parseFamilyCode(text: string): FamilyData | null {
+  const t = text.trim()
+  try {
+    if (t.startsWith('{')) return validateFamily(JSON.parse(t))
+    const at = t.indexOf(FAMILY_CODE_PREFIX)
+    if (at < 0) return null
+    const b64 = t.slice(at + FAMILY_CODE_PREFIX.length).replace(/[^A-Za-z0-9+/=]/g, '')
+    const bin = atob(b64)
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+    return validateFamily(JSON.parse(new TextDecoder().decode(bytes)))
+  } catch {
+    return null
+  }
+}
+
+export async function importFamilyCode(text: string): Promise<FamilyData> {
+  const data = parseFamilyCode(text)
+  if (!data || (!data.members.length && !data.specials.length)) {
+    throw new Error("That code didn't work. Copy the whole message from David and try again.")
+  }
+  await setFamily(data)
+  return data
+}
 
 export async function importFamily(file: File): Promise<FamilyData> {
   let raw: unknown

@@ -123,3 +123,6 @@
   .session-done .honest { font-size: 15px; margin: 0 8px; }
   .session-done .done-stats { padding-block: 12px; }
 }
+
+/* next family date on an ordinary day: gentle, not shouty */
+.countdown.soon { color: var(--ink); font-weight: 600; }

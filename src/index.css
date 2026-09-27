@@ -157,3 +157,6 @@ a { color: inherit; }
   .confetti { display: none !important; }
   .cell.focus { animation: none !important; box-shadow: inset 0 0 0 3px #fff, 0 0 0 3px var(--ink-strong) !important; }
 }
+
+/* body disables selection for the game; text fields must still allow select + paste on iPhone */
+input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }

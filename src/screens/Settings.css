@@ -150,3 +150,5 @@ label.btn input[type='file'] { display: none; }
 .about-rule + .about-rule { border-top: 1px solid var(--line); }
 .about-rule svg { flex: none; }
 .about-rule p { margin: 0; }
+
+.code-input { font-family: ui-monospace, Menlo, monospace; font-size: 13px; resize: vertical; min-height: 88px; -webkit-user-select: text; user-select: text; }
