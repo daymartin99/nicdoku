@@ -1,7 +1,7 @@
-@import '@fontsource/fredoka/400.css';
-@import '@fontsource/fredoka/500.css';
-@import '@fontsource/fredoka/600.css';
-@import '@fontsource/fredoka/700.css';
+@import '@fontsource/fredoka/latin-400.css';
+@import '@fontsource/fredoka/latin-500.css';
+@import '@fontsource/fredoka/latin-600.css';
+@import '@fontsource/fredoka/latin-700.css';
 
 /* Design tokens – warm cream + brown, matched to the Meowdoku look she likes. */
 :root {
