@@ -1,6 +1,6 @@
 import { signal, effect } from '@preact/signals'
 import { lsGet, lsSet, localDay } from '../db'
-import { COOLDOWN_MIN, SESSION_SIZE, sizeForLevel, GENERATOR_VERSION } from '../config'
+import { COOLDOWN_MIN, SICK_COOLDOWN_MIN, SESSION_SIZE, sizeForLevel, GENERATOR_VERSION } from '../config'
 import type { Difficulty } from '../engine/types'
 
 export type SessionResult = {
@@ -37,6 +37,10 @@ export type Progress = {
   session: Session | null
   /** random salt so puzzles aren't the same as anyone else running the code */
   salt: string
+  /** local day Power Hour was finished: everything rests until tomorrow */
+  restDay: string | null
+  /** local day she switched on "not feeling great": gentler rules for that day only */
+  sickDay: string | null
 }
 
 const fresh = (): Progress => ({
@@ -49,6 +53,8 @@ const fresh = (): Progress => ({
   daily: null,
   session: null,
   salt: Math.random().toString(36).slice(2, 10),
+  restDay: null,
+  sickDay: null,
 })
 
 export const progress = signal<Progress>({ ...fresh(), ...lsGet('nd:progress', {}) })
@@ -102,7 +108,7 @@ export function startSession(): Session {
     startedAt: Date.now(),
     levelAtStart: pr.level,
     index: 0,
-    plan: planSession(pr.level, pr.skill),
+    plan: planSession(pr.level, sickToday() ? Math.max(-1, pr.skill - 1) : pr.skill),
     results: [],
   }
   patchProgress({ session: s })
@@ -123,7 +129,7 @@ export function finishSession() {
   patchProgress({
     session: { ...s, finishedAt: Date.now() },
     bestSessionScore: Math.max(pr.bestSessionScore, score),
-    cooldownUntil: Date.now() + COOLDOWN_MIN * 60_000,
+    cooldownUntil: Date.now() + (sickToday() ? SICK_COOLDOWN_MIN : COOLDOWN_MIN) * 60_000,
     extrasUsed: 0,
     skill,
   })
@@ -131,4 +137,21 @@ export function finishSession() {
 
 export function inCooldown(now = Date.now()) {
   return progress.value.cooldownUntil > now
+}
+
+/** Power Hour is done for today: breaks, daily and Power Hour all rest until tomorrow. */
+export function restingToday(day = localDay()) {
+  return progress.value.restDay === day
+}
+
+/** "Not feeling great" is on for today (it switches itself off at midnight). */
+export function sickToday(day = localDay()) {
+  return progress.value.sickDay === day
+}
+
+export function setSickToday(on: boolean) {
+  const pr = progress.value
+  const finished = pr.session?.finishedAt
+  const shorter = on && finished ? Math.min(pr.cooldownUntil, finished + SICK_COOLDOWN_MIN * 60_000) : pr.cooldownUntil
+  patchProgress({ sickDay: on ? localDay() : null, cooldownUntil: shorter })
 }

@@ -11,7 +11,14 @@ import { progress, patchProgress, finishSession, type SessionResult } from './pr
 import { medianTime, fasterThanPct, isNewPB } from '../stats/metrics'
 import { feedback } from '../feedback'
 
-export type GameMode = 'session' | 'daily' | 'extra'
+export type GameMode = 'session' | 'daily' | 'extra' | 'power'
+
+/** Power Hour listens for solves and mistakes without game.ts importing it (no cycle). */
+export type PowerSolveInfo = { puzzle: Puzzle; timeMs: number; clean: boolean; mistakes: number; hints: number }
+export const powerHooks: {
+  onSolved: ((info: PowerSolveInfo) => void) | null
+  onMistake: (() => void) | null
+} = { onSolved: null, onMistake: null }
 
 /** One undo step: the board plus the hint bookkeeping, so undoing a Reveal gives the hint back. */
 export type HistoryEntry = { marks: number[]; hintCells: number[]; hints: number }
@@ -313,6 +320,10 @@ export function placePiece(i: number, fromHint = false, replaceLast = false) {
     commit({ ...g, marks, history, lives, mistakes: g.mistakes + 1 })
     lastEvent.value = { type: 'wrong', cell: i, t: Date.now() }
     feedback('wrong')
+    if (g.mode === 'power') {
+      powerHooks.onMistake?.()
+      return
+    }
     if (g.lives === 1) flash("Out of hearts. Keep going, this one just won't count as clean.", 4500)
     return
   }
@@ -465,6 +476,11 @@ async function checkWin() {
   commit(done)
   flushSave()
   feedback('win')
+  if (g.mode === 'power') {
+    // Power Hour keeps its own records and flows straight on: no overlay, no normal stats
+    powerHooks.onSolved?.({ puzzle: g.puzzle, timeMs, clean: g.mistakes === 0 && g.hints === 0, mistakes: g.mistakes, hints: g.hints })
+    return
+  }
   const beat = sleep(700) // let her see the solved board before the overlay
 
   const clean = g.mistakes === 0 && g.hints === 0
@@ -529,6 +545,17 @@ async function checkWin() {
     })
   await Promise.all([statsWork, beat])
   win.value = { timeMs, score, clean, pb, fasterPct, median, mode: g.mode }
+}
+
+/** Stop the board where it is (Power Hour's clock ran out mid-puzzle). */
+export function freezeGame() {
+  const g = game.value
+  if (!g || g.done) return
+  const e = elapsed(g)
+  runStart = 0
+  activeHint.value = null
+  commit({ ...g, done: true, elapsedMs: e, drafts: null })
+  flushSave()
 }
 
 export function clearFinishedGame() {

@@ -9,6 +9,7 @@ import { theme, pieceArt } from '../state/theme'
 import { unlockAudio, feedback } from '../feedback'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
+import { unspinPoint } from '../power/spin'
 
 const X_PATH = 'M4.7 4.7l14.6 14.6M19.3 4.7 4.7 19.3'
 
@@ -76,9 +77,11 @@ export function Board() {
     const hit = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('.cell')
     if (hit?.dataset.i) return Number(hit.dataset.i)
     const el = gridRef.current!
+    // a quarter-turned board has the same bounding box, so undo the spin/mirror then do plain geometry
     const r = el.getBoundingClientRect()
-    const c = Math.floor(((e.clientX - r.left) / r.width) * n)
-    const rr = Math.floor(((e.clientY - r.top) / r.height) * n)
+    const p = unspinPoint(e.clientX, e.clientY, r)
+    const c = Math.floor(((p.x - r.left) / r.width) * n)
+    const rr = Math.floor(((p.y - r.top) / r.height) * n)
     if (c < 0 || c >= n || rr < 0 || rr >= n) return -1
     return rr * n + c
   }

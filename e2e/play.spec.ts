@@ -64,6 +64,7 @@ test('a full break: 5 puzzles → break done → cooldown', async ({ page }) => 
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
   await skipOnboarding(page)
   await page.getByRole('button', { name: /Start a break/ }).click()
+  await page.getByRole('button', { name: 'Skip' }).click() // quick mood check
   for (let k = 0; k < 5; k++) {
     await solveCurrent(page)
     const btn = page.locator('.win-btn')
@@ -90,6 +91,7 @@ test('a full break: 5 puzzles → break done → cooldown', async ({ page }) => 
 test('wrong piece costs a heart and leaves an orange X, never fails', async ({ page }) => {
   await skipOnboarding(page, 40)
   await page.getByRole('button', { name: /Start a break/ }).click()
+  await page.getByRole('button', { name: 'Skip' }).click() // quick mood check
   await expect(page.locator('.board')).toBeVisible()
   const g = await current(page)
   const n = g.puzzle.n
@@ -114,6 +116,7 @@ test('wrong piece costs a heart and leaves an orange X, never fails', async ({ p
 test('reload mid-puzzle restores the exact board', async ({ page }) => {
   await skipOnboarding(page)
   await page.getByRole('button', { name: /Start a break/ }).click()
+  await page.getByRole('button', { name: 'Skip' }).click() // quick mood check
   await expect(page.locator('.board')).toBeVisible()
   const g = await current(page)
   const n = g.puzzle.n
@@ -136,6 +139,7 @@ test('stress: random taps, drags, undo, hints, then solve — no errors', async 
   page.on('pageerror', (e) => errors.push(e.message))
   await skipOnboarding(page, 200)
   await page.getByRole('button', { name: /Start a break/ }).click()
+  await page.getByRole('button', { name: 'Skip' }).click() // quick mood check
   const board = page.locator('.board')
   await expect(board).toBeVisible()
   const box = (await board.boundingBox())!

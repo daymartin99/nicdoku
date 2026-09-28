@@ -12,6 +12,9 @@ import { ThemesScreen } from './screens/Themes'
 import { SettingsScreen } from './screens/Settings'
 import { AboutScreen } from './screens/About'
 import { OnboardingScreen } from './screens/Onboarding'
+import { PowerIntroScreen } from './power/PowerIntro'
+import { PowerDoneScreen } from './power/PowerDone'
+import { power, resumePower } from './power/state'
 import { UpdateToast } from './components/UpdateToast'
 import { lsGet, lsSet } from './db'
 import { familyVersion } from './backup'
@@ -57,8 +60,14 @@ export function App() {
   }, [fv])
 
   useEffect(() => {
+    const p = power.value
     if (!settings.value.onboarded) go('onboarding')
-    else if (game.value && !game.value.done) go('game')
+    // mid Power Hour: straight back in (or to the ending, if the hour ran out while away)
+    else if (p && !p.endedAt) {
+      resumePower()
+      go('game')
+    } else if (p && p.endedAt && !p.seen) go('power-done')
+    else if (game.value && !game.value.done && game.value.mode !== 'power') go('game')
   }, [])
 
   const r = route.value
@@ -72,6 +81,8 @@ export function App() {
       {r === 'settings' && <SettingsScreen />}
       {r === 'about' && <AboutScreen />}
       {r === 'onboarding' && <OnboardingScreen />}
+      {r === 'power-intro' && <PowerIntroScreen />}
+      {r === 'power-done' && <PowerDoneScreen />}
       <UpdateToast />
     </Guard>
   )

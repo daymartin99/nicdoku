@@ -13,7 +13,8 @@ export default defineConfig({
   webServer: {
     command: 'npm run build && npm run preview -- --port 4174 --strictPort',
     port: 4174,
-    reuseExistingServer: true,
+    // never reuse: a reused server skips the build step and tests a stale bundle
+    reuseExistingServer: false,
     timeout: 180_000,
   },
   projects: [{ name: 'iphone-webkit', use: { ...devices['iPhone 13'] } }],

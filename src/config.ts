@@ -1,6 +1,8 @@
 // Tunables. Change these after a week of real play.
 export const SESSION_SIZE = 5
 export const COOLDOWN_MIN = 60
+/** rest between breaks on a "not feeling great" day */
+export const SICK_COOLDOWN_MIN = 20
 export const LIVES = 3
 /** extra puzzles allowed during a cooldown (not counted in stats) */
 export const JUST_ONE_MORE = 1

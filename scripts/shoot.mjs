@@ -71,6 +71,9 @@ async function seed({ level = 135, onboarded = true, extra = {}, progress = {}, 
 
 async function startBreak() {
   await page.getByRole('button', { name: /Start a break|Resume break/ }).click()
+  // a fresh break asks a quick (skippable) mood question first
+  const skip = page.getByRole('button', { name: 'Skip' })
+  if (await skip.isVisible({ timeout: 800 }).catch(() => false)) await skip.click()
   await page.locator('.board').waitFor()
   await page.waitForTimeout(500)
 }

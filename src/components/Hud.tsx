@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import type { ComponentChildren } from 'preact'
 import { LIVES } from '../config'
 import { game, elapsed, solvedRegions } from '../state/game'
 import { progress } from '../state/progress'
@@ -35,7 +36,8 @@ export function Header({ onBack, onSettings }: { onBack: () => void; onSettings:
 }
 
 /** One piece per colour: silhouette until that colour is solved. */
-export function Tracker() {
+/** `right` replaces the lives pill (Power Hour shows its combo there). */
+export function Tracker({ right }: { right?: ComponentChildren } = {}) {
   const g = game.value!
   const palette = theme.value.palette
   const solved = solvedRegions.value
@@ -54,7 +56,7 @@ export function Tracker() {
           </span>
         ))}
       </div>
-      {g.lives > 0 ? (
+      {right ?? (g.lives > 0 ? (
         <div class="pill lives" aria-label={`${g.lives} lives left`}>
           {Array.from({ length: LIVES }, (_, i) => (
             <span key={i} class={`life${i < g.lives ? '' : ' lost'}`}>
@@ -67,7 +69,7 @@ export function Tracker() {
         <div class="pill lives" aria-label={`${g.mistakes} slips`}>
           <span class="mistake-count">{g.mistakes} slips</span>
         </div>
-      )}
+      ))}
     </div>
   )
 }

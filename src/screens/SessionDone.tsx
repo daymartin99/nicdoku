@@ -5,6 +5,8 @@ import { pieceArt } from '../state/theme'
 import { allSolves, localDay, type SolveRecord } from '../db'
 import { formatTime, median, medianTime } from '../stats/metrics'
 import { Piece } from '../components/Piece'
+import { MoodTap } from '../components/MoodTap'
+import { saveMood } from '../mood'
 import './home.css'
 
 // Calm, honest closing lines. One is picked per break.
@@ -18,6 +20,8 @@ const MESSAGES = [
 export function SessionDoneScreen() {
   const s = progress.value.session
   const [solves, setSolves] = useState<SolveRecord[]>([])
+  // after-break check-in: 'ask' → 'thanks' (picked) or 'skipped'
+  const [mood, setMood] = useState<'ask' | 'thanks' | 'skipped'>('ask')
   useEffect(() => {
     allSolves().then(setSolves).catch(() => {})
   }, [])
@@ -106,7 +110,25 @@ export function SessionDoneScreen() {
         })}
       </div>
 
-      <p class="honest">{quicker ?? msg}</p>
+      {mood === 'ask' ? (
+        <div class="done-mood">
+          <MoodTap
+            compact
+            prompt="How do you feel now?"
+            onPick={(v) => {
+              void saveMood({ kind: 'break', ref: s.id, when: 'after', v })
+              setMood('thanks')
+            }}
+            onSkip={() => setMood('skipped')}
+          />
+        </div>
+      ) : (
+        <>
+          {mood === 'thanks' && <p class="done-thanks">Thanks, noted.</p>}
+          {/* after a check-in keep only the data-backed line, so the screen still fits */}
+          {(mood === 'skipped' || quicker) && <p class="honest">{quicker ?? msg}</p>}
+        </>
+      )}
 
       <p class="muted done-next">
         Next break from {nextAt}

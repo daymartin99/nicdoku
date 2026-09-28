@@ -1,0 +1,38 @@
+/* One-tap mood check-in. Calm: no bounce, just a soft press. */
+.mood-tap { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.mood-head { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.mood-prompt { font-size: 20px; font-weight: 600; color: var(--ink-strong); text-align: center; }
+.mood-faces { display: flex; justify-content: center; gap: 8px; width: 100%; }
+.mood-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 54px; min-height: 54px; padding: 2px; border-radius: 16px;
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+.mood-btn:active { transform: scale(0.94); }
+.mood-btn:focus-visible { outline: 3px solid var(--ink-soft); outline-offset: 2px; }
+.mood-btn .mood-face { width: 54px; height: 54px; display: block; }
+.mood-btn[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--accent); }
+.mood-btn:disabled { opacity: 0.4; cursor: default; }
+.mood-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.mood-skip {
+  min-height: 44px; padding: 0 14px; font-size: 15px; font-weight: 600; color: var(--ink-soft);
+}
+
+/* compact: a single header line (prompt left, Skip right) over a row of 48px faces */
+.mood-tap.compact { gap: 2px; }
+.mood-tap.compact .mood-head { justify-content: space-between; min-height: 30px; }
+.mood-tap.compact .mood-prompt { font-size: 16px; text-align: left; padding-left: 4px; }
+.mood-tap.compact .mood-skip { min-height: 30px; margin: -7px -6px -7px 0; padding: 7px 10px; }
+.mood-tap.compact .mood-faces { gap: 10px; }
+.mood-tap.compact .mood-btn { min-width: 48px; min-height: 48px; padding: 0; border-radius: 50%; }
+.mood-tap.compact .mood-btn .mood-face { width: 48px; height: 48px; }
+
+/* Session done: the check-in sits where the closing line goes. It is ~30px taller than that line,
+   so on short phones the rest of the summary tightens a little to keep both buttons on screen. */
+.done-mood { margin: 0 4px; }
+.done-thanks { text-align: center; margin: 0; font-size: 14px; color: var(--ink-soft); }
+@media (max-height: 760px) {
+  .session-done.screen:has(.done-mood) { gap: 8px; }
+  .session-done:has(.done-mood) .done-art { width: 44px; height: 44px; }
+  .session-done:has(.done-mood) .done-stats { padding-block: 10px; }
+}

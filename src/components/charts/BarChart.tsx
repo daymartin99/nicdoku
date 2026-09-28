@@ -8,6 +8,8 @@ type Props = {
   format: (v: number) => string
   ariaLabel: string
   color?: string
+  /** optional per-bar colours (falls back to `color`) */
+  colors?: string[]
 }
 
 const W = 320, H = 150, PT = 30, PB = 22
@@ -19,7 +21,7 @@ function niceMax(v: number): number {
 }
 
 /** Simple vertical bars (e.g. minutes played per day). Tap or drag along it to see values. */
-export function BarChart({ data, format, ariaLabel, color = 'var(--accent)' }: Props) {
+export function BarChart({ data, format, ariaLabel, color = 'var(--accent)', colors }: Props) {
   const slot = W / Math.max(1, data.length)
   const { sel, handlers } = useScrub(W, (vx) =>
     data.length ? Math.min(data.length - 1, Math.max(0, Math.floor(vx / slot))) : null,
@@ -44,7 +46,7 @@ export function BarChart({ data, format, ariaLabel, color = 'var(--accent)' }: P
             {bh > 0 && (
               <rect
                 x={x} y={H - PB - bh} width={bw} height={bh} rx={Math.min(4, bw / 2)}
-                fill={color} opacity={sel === null || sel === i ? 1 : 0.45}
+                fill={colors?.[i] ?? color} opacity={sel === null || sel === i ? 1 : 0.45}
               />
             )}
             {d.tick && <text x={i * slot + slot / 2} y={H - 4} text-anchor="middle">{d.tick}</text>}

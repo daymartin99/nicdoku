@@ -6,6 +6,7 @@ import { go } from './router'
 import { startGame, clearFinishedGame, game } from './state/game'
 import {
   progress, patchProgress, startSession, finishSession, sessionSeed, dailySeed, dailySpec, planSession,
+  restingToday,
 } from './state/progress'
 import { theme } from './state/theme'
 import { localDay } from './db'
@@ -14,7 +15,7 @@ import { SESSION_SIZE, sizeForLevel } from './config'
 export const loading = signal(false)
 
 async function launch(fn: () => Promise<void>) {
-  if (loading.value) return
+  if (loading.value || restingToday()) return
   loading.value = true
   try {
     await fn()

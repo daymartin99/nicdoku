@@ -12,6 +12,10 @@ import { Header, Tracker, Rules, Timer } from '../components/Hud'
 import { WinOverlay } from '../components/WinOverlay'
 import { BulbIcon, WandIcon, BroomIcon } from '../components/ToolIcons'
 import { UndoIcon, PencilIcon, ResetIcon, CloseIcon } from '../components/Icons'
+import { PowerDriver, PowerHeader, ComboPill, StageBar, Burst, TimeSlam, Breathe, powerStyle, stageClass } from '../power/PowerHud'
+import { powerPhase } from '../power/state'
+import { spin } from '../power/spin'
+import '../power/power.css'
 
 export function GameScreen() {
   const g = game.value
@@ -63,11 +67,20 @@ export function GameScreen() {
     if (confirm('Restart this puzzle? Your marks will be cleared (the timer keeps going).')) resetBoard()
   }
 
+  const isPower = g.mode === 'power'
+  const sp = spin.value
+  const phase = isPower ? powerPhase.value : 'playing'
+
   return (
-    <div class="screen game-screen">
-      <Header onBack={() => go('home')} onSettings={() => go('settings')} />
-      <Tracker />
-      <Rules />
+    <div
+      class={`screen game-screen${isPower ? ` power ${stageClass()}` : ''}`}
+      style={isPower ? (powerStyle() as never) : undefined}
+    >
+      {isPower && <PowerDriver />}
+      {isPower ? <PowerHeader /> : <Header onBack={() => go('home')} onSettings={() => go('settings')} />}
+      <Tracker right={isPower ? <ComboPill /> : undefined} />
+      {!isPower && <Rules />}
+      {isPower ? <StageBar /> : (
       <div class="game-sub">
         {inSession ? (
           <span class="session-dots" aria-label={`Puzzle ${Math.min(s!.index + 1, SESSION_SIZE)} of ${SESSION_SIZE}`}>
@@ -88,9 +101,19 @@ export function GameScreen() {
           )}
         </span>
       </div>
+      )}
 
       <div class="board-wrap">
-        <Board />
+        {isPower ? (
+          <div class="spin-outer" style={{ transform: `rotate(${sp.deg}deg) scaleX(${sp.mirror ? -1 : 1})` }}>
+            <div key={sp.pulse?.t ?? 0} class={`spin-inner${sp.pulse ? ` pulse-${sp.pulse.kind}` : ''}`}>
+              <Board />
+            </div>
+          </div>
+        ) : (
+          <Board />
+        )}
+        {isPower && <Burst />}
       </div>
 
       <div class={`controls${hint ? ' has-hint' : ''}`}>
@@ -149,7 +172,9 @@ export function GameScreen() {
         )}
       </div>
 
-      {win.value && <WinOverlay />}
+      {!isPower && win.value && <WinOverlay />}
+      {isPower && phase === 'time' && <TimeSlam />}
+      {isPower && phase === 'breathe' && <Breathe />}
     </div>
   )
 }

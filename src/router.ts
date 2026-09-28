@@ -9,6 +9,8 @@ export type Route =
   | 'settings'
   | 'about'
   | 'onboarding'
+  | 'power-intro'
+  | 'power-done'
 
 export const route = signal<Route>('home')
 

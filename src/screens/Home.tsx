@@ -11,7 +11,12 @@ import { JUST_ONE_MORE, SESSION_SIZE } from '../config'
 import { Piece } from '../components/Piece'
 import { InstallHint } from '../components/InstallHint'
 import { ChartIcon, CalendarIcon, GearIcon } from '../components/Icons'
+import { powerDoneToday, power } from '../power/state'
+import { sickToday, setSickToday } from '../state/progress'
+import { MoodTap } from '../components/MoodTap'
+import { saveMood, type MoodValue } from '../mood'
 import './home.css'
+import '../power/power.css'
 
 const CONFETTI = ['#8E7BDB', '#F7A05E', '#8DD67E', '#F5A2DE', '#A8C8E6', '#FFC53D']
 const CONFETTI_KEY = 'nd:bigdayConfetti'
@@ -79,6 +84,7 @@ function BigDayConfetti() {
 export function HomeScreen() {
   const [solves, setSolves] = useState<SolveRecord[] | null>(null)
   const [factOpen, setFactOpen] = useState(false)
+  const [askMood, setAskMood] = useState(false)
   const pr = progress.value
   const now = useNow(inCooldown() ? 30_000 : 60_000, pr.cooldownUntil)
   useEffect(() => {
@@ -98,6 +104,19 @@ export function HomeScreen() {
   const st = solves && solves.length > 0 ? streak(solves, today) : null
   const head = solves ? headline(solves, today) : ''
   const herBirthday = r.isBigDay && t.id === 'birthday-queen'
+  const resting = powerDoneToday(today)
+  const sick = sickToday(today)
+  const run = power.value
+  const ranToday = run?.day === today && run.endedAt ? run : null
+
+  // a quick, skippable mood tap before a fresh break (not when resuming one)
+  const beginBreak = async (v?: MoodValue) => {
+    setAskMood(false)
+    await startBreak()
+    const id = progress.value.session?.id
+    if (v && id) void saveMood({ kind: 'break', ref: id, when: 'before', v })
+  }
+  const onStart = () => (sessionOpen ? void startBreak() : setAskMood(true))
   const nextAt = new Date(pr.cooldownUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
 
   return (
@@ -137,7 +156,32 @@ export function HomeScreen() {
 
       <InstallHint />
 
-      {g && !g.done ? (
+      {sick && !resting && (
+        <div class="card gentle-card" role="status">
+          <span class="gentle-emoji" aria-hidden="true">🫖</span>
+          <span class="gentle-text">
+            <b>Gentle day</b>
+            <span class="muted">Shorter rests (20 min) and easier puzzles. Look after yourself.</span>
+          </span>
+          <button class="link-btn" onClick={() => setSickToday(false)}>Turn off</button>
+        </div>
+      )}
+
+      {resting ? (
+        <div class="card rest-card">
+          <span class="rest-bolt" aria-hidden="true">⚡</span>
+          <b>All done for today, {name}</b>
+          <span class="muted">
+            {ranToday ? `Power Hour: ${ranToday.solves.length} puzzle${ranToday.solves.length === 1 ? '' : 's'}, ${ranToday.score.toLocaleString('en-GB')} points. ` : ''}
+            Everything's resting until tomorrow.
+          </span>
+          <button class="link-btn" onClick={() => go('stats')}>See your Power Hour stats</button>
+        </div>
+      ) : askMood ? (
+        <div class="card mood-card">
+          <MoodTap prompt="Quick check: how are you feeling?" onPick={(v) => void beginBreak(v)} onSkip={() => void beginBreak()} />
+        </div>
+      ) : g && !g.done && g.mode !== 'power' ? (
         <button class="btn main-cta" onClick={continueGame}>
           Continue puzzle
           <small>{g.mode === 'daily' ? 'Daily puzzle' : `Level ${g.level} · ${g.puzzle.n}×${g.puzzle.n}`}</small>
@@ -153,7 +197,7 @@ export function HomeScreen() {
           )}
         </div>
       ) : (
-        <button class="btn main-cta" disabled={loading.value} onClick={startBreak}>
+        <button class="btn main-cta" disabled={loading.value} onClick={onStart}>
           {loading.value
             ? 'Shuffling…'
             : sessionOpen
@@ -167,6 +211,7 @@ export function HomeScreen() {
         </button>
       )}
 
+      {!resting && (
       <button
         class={`card daily-card${dailyDone ? ' done' : ''}`}
         disabled={loading.value || dailyDone || otherGameOpen}
@@ -188,6 +233,17 @@ export function HomeScreen() {
           </span>
         </span>
       </button>
+      )}
+
+      {!resting && (
+        <button class="card power-card" disabled={loading.value || otherGameOpen} onClick={() => go('power-intro')}>
+          <span class="power-bolt" aria-hidden="true">⚡</span>
+          <span class="daily-text">
+            <b>Power Hour</b>
+            <span class="muted">{otherGameOpen ? 'Finish your puzzle first' : 'One intense hour, then done for the day'}</span>
+          </span>
+        </button>
+      )}
 
       {t.fact && (
         <div class="card fact-card">
@@ -221,6 +277,12 @@ export function HomeScreen() {
           </div>
           {head && <div class="headline">{head}</div>}
         </div>
+      )}
+
+      {!sick && !resting && (
+        <button class="link-btn gentle-link" onClick={() => setSickToday(true)}>
+          Not feeling great today?
+        </button>
       )}
 
       <div class="home-nav">
