@@ -1,7 +1,7 @@
 // Nicdoku native build settings. Edit TEAM_ID once (developer.apple.com → Membership → Team ID).
 // CI overrides TEAM_ID and BUILD_NUMBER on the command line.
 
-TEAM_ID = YOUR_TEAM_ID
+TEAM_ID = SW353WC2KD
 BUNDLE_PREFIX = com.daymartin
 MARKETING_VERSION = 1.0.0
 BUILD_NUMBER = 1

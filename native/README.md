@@ -33,11 +33,9 @@ cd nicdoku
 ```
 (GitHub will ask you to sign in; use a personal access token as the password, or `gh auth login` if the GitHub CLI is there.)
 
-### 2. Set your Team ID
-Find it at developer.apple.com → Account → **Membership details → Team ID** (10 characters).
-```bash
-sed -i '' 's/YOUR_TEAM_ID/ABCDE12345/' native/Config.xcconfig   # ← your ID
-```
+### 2. Team ID
+Already set to **SW353WC2KD** (DG Capital Trading UK Ltd) in `native/Config.xcconfig`. Nothing to do
+unless the team changes.
 
 ### 3. Set up and generate the project
 ```bash
