@@ -1,0 +1,151 @@
+# XcodeGen spec: `xcodegen generate` (run by scripts/prepare.sh) creates Nicdoku.xcodeproj.
+# Three targets: the iPhone app (the web game in a Capacitor shell + a Swift plugin),
+# the Apple Watch app (Power Hour companion, heart rate, haptics) and its watch-face complication.
+
+name: Nicdoku
+options:
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+settings:
+  base:
+    DEVELOPMENT_TEAM: $(TEAM_ID)
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: $(BUILD_NUMBER)
+    SWIFT_VERSION: "5.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  Capacitor:
+    url: https://github.com/ionic-team/capacitor-swift-pm.git
+    exactVersion: 8.5.2
+
+targets:
+  Nicdoku:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - "public"
+          - "public/**"
+          - "capacitor.config.json"
+      # the built web app, copied in by prepare.sh; must stay a folder called "public"
+      - path: App/public
+        type: folder
+        buildPhase: resources
+      - path: App/capacitor.config.json
+        buildPhase: resources
+    dependencies:
+      - package: Capacitor
+        product: Capacitor
+      - package: Capacitor
+        product: Cordova
+      - target: NicdokuWatch
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Nicdoku
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        NSHealthShareUsageDescription: Nicdoku reads the heart rate your Apple Watch records during Power Hour, so you can see it on your results.
+        NSHealthUpdateUsageDescription: Nicdoku saves your breaks and wind-downs to Apple Health as Mindful Minutes.
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).nicdoku
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDarkContent
+
+  NicdokuWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - Watch
+      - Shared
+    dependencies:
+      - target: NicdokuComplication
+    info:
+      path: Watch/Info.plist
+      properties:
+        CFBundleDisplayName: Nicdoku
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: $(BUNDLE_PREFIX).nicdoku
+        WKBackgroundModes: [workout-processing]
+        NicdokuAppGroup: group.$(BUNDLE_PREFIX).nicdoku
+        NSHealthShareUsageDescription: Nicdoku reads your heart rate during Power Hour.
+        NSHealthUpdateUsageDescription: Nicdoku runs a short mind and body session during Power Hour to measure heart rate.
+    entitlements:
+      path: Watch/Watch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+        com.apple.security.application-groups: [group.$(BUNDLE_PREFIX).nicdoku]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).nicdoku.watchkitapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SKIP_INSTALL: YES
+
+  NicdokuComplication:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - Complication
+      - Shared
+    info:
+      path: Complication/Info.plist
+      properties:
+        CFBundleDisplayName: Nicdoku
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NicdokuAppGroup: group.$(BUNDLE_PREFIX).nicdoku
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Complication/Complication.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(BUNDLE_PREFIX).nicdoku]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_PREFIX).nicdoku.watchkitapp.complication
+        SKIP_INSTALL: YES
+
+schemes:
+  Nicdoku:
+    build:
+      targets:
+        Nicdoku: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  NicdokuWatch:
+    build:
+      targets:
+        NicdokuWatch: all
+    run:
+      config: Debug

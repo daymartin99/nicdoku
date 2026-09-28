@@ -6,6 +6,7 @@ import { loading } from '../flow'
 import { Toggle } from '../components/Toggle'
 import { MoodTap } from '../components/MoodTap'
 import { BackIcon } from '../components/Icons'
+import { isNative, native } from '../native/bridge'
 import './power.css'
 
 /** The start ritual: settle in, know it ends, then go. */
@@ -21,6 +22,8 @@ export function PowerIntroScreen() {
     setStarting(true)
     // must happen inside this tap for iOS to allow sound
     const ok = sound && unlockPowerAudio()
+    // native app: ask once for Apple Health so the Watch can share heart rate (iOS remembers the answer)
+    if (isNative) await native.requestHealth()
     await startPower({ sound: !!ok, moodBefore: mood })
   }
 
@@ -52,6 +55,7 @@ export function PowerIntroScreen() {
         <b>Before you start</b>
         <p>Comfy? Drink nearby? Clean solves in a row build a combo; a slip resets it.</p>
         <p class="pi-rest">When the hour ends, everything rests until tomorrow, breaks included.</p>
+        {isNative && <p>Wearing your Apple Watch? It'll show the clock, tap your wrist before spins and track your heart rate.</p>}
       </div>
 
       {!asked && (

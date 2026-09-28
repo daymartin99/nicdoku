@@ -2,7 +2,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { power, powerHistory, setPowerMoodAfter, leavePowerDone, type PowerRun } from './state'
 import { POWER_MS } from './timeline'
 import { MoodTap } from '../components/MoodTap'
-import { BarChart } from '../components/charts'
+import { BarChart, LineChart } from '../components/charts'
+import type { HrSample } from '../native/bridge'
 import { formatTime } from '../stats/metrics'
 import './power.css'
 
@@ -14,6 +15,26 @@ function blocks(r: PowerRun) {
   const out = Array.from({ length: 12 }, () => 0)
   for (const s of r.solves) out[Math.min(11, Math.floor(s.at / BLOCK))]++
   return out
+}
+
+/** Minute-by-minute median heart rate, plus resting / peak / end summaries. */
+function heartSummary(hr: HrSample[]) {
+  const mins = new Map<number, number[]>()
+  for (const s of hr) {
+    const m = Math.floor(s.t / 60_000)
+    mins.set(m, [...(mins.get(m) ?? []), s.bpm])
+  }
+  const med = (xs: number[]) => {
+    const a = [...xs].sort((x, y) => x - y)
+    return a[Math.floor(a.length / 2)]
+  }
+  const last = Math.max(...mins.keys())
+  const series = Array.from({ length: last + 1 }, (_, m) => (mins.has(m) ? med(mins.get(m)!) : null))
+  const real = series.map((v, m) => ({ v, m })).filter((x): x is { v: number; m: number } => x.v !== null)
+  const peak = real.reduce((a, b) => (b.v > a.v ? b : a), real[0])
+  const start = med(real.slice(0, 3).map((x) => x.v))
+  const end = med(real.slice(-2).map((x) => x.v))
+  return { series, peak, start, end }
 }
 
 function endLine(r: PowerRun) {
@@ -82,6 +103,27 @@ export function PowerDoneScreen() {
           colors={STAGE_COLOURS}
         />
       </div>
+
+      {r.hr && r.hr.length >= 5 && (() => {
+        const h = heartSummary(r.hr!)
+        return (
+          <div class="card pd-heart">
+            <span class="label">Your heart through the hour (Apple Watch)</span>
+            <LineChart
+              points={h.series.map((v, m) => ({ label: `${m} min`, value: v, highlight: m === h.peak.m }))}
+              format={(v: number) => `${Math.round(v)} bpm`}
+              ariaLabel="Heart rate each minute of the hour"
+              axisNote="bpm"
+            />
+            <p>
+              Started around <b>{h.start}</b>, peaked at <b>{h.peak.v}</b> ({h.peak.m} min in), finished at <b>{h.end}</b> bpm.
+            </p>
+            <p class="muted small">
+              Sitting and concentrating usually nudges heart rate only a little, so this is simply your own pattern, not a score.
+            </p>
+          </div>
+        )
+      })()}
 
       <div class="card pd-peak">
         <b>Peak and end</b>

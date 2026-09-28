@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 
-// The hour runs 120× faster here (dev-only localStorage flag): 60 min → 30 s, first spin at ~5 s.
-const SCALE = 120
+// The hour runs 60× faster here (dev-only localStorage flag): 60 min → 60 s, spins every ~10 s at first.
+// (At 120× spins came every few seconds and taps could land mid-turn, which a person never does.)
+const SCALE = 60
 
 type Saved = { puzzle: { n: number; solution: number[] }; marks: number[]; done: boolean; mode: string }
 
@@ -43,7 +44,7 @@ async function solve(page: Page) {
 }
 
 test('power hour: start → play → spins → TIME. → breathe → results → rest until tomorrow', async ({ page }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   page.on('dialog', (d) => d.accept())
@@ -65,8 +66,8 @@ test('power hour: start → play → spins → TIME. → breathe → results →
   await expect(page.locator('.burst')).toBeVisible()
   await expect.poll(async () => JSON.stringify((await current(page)).puzzle), { timeout: 5000 }).not.toBe(JSON.stringify(first.puzzle))
 
-  // first spin at 10 min (≈5 s here): board turns a quarter
-  await expect.poll(async () => page.locator('.spin-outer').getAttribute('style'), { timeout: 12_000 }).toContain('rotate(90deg)')
+  // first spin at 10 min (≈10 s here): board turns a quarter
+  await expect.poll(async () => page.locator('.spin-outer').getAttribute('style'), { timeout: 15_000 }).toContain('rotate(90deg)')
   // and she can still solve on the turned board
   await page.waitForTimeout(1100) // let the turn animation finish
   const before = (await page.evaluate(() => JSON.parse(localStorage.getItem('nd:power') || '{}'))).solves.length
@@ -74,7 +75,7 @@ test('power hour: start → play → spins → TIME. → breathe → results →
   await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('nd:power') || '{}'))).solves.length, { timeout: 4000 }).toBeGreaterThan(before)
 
   // the hour ends by itself: TIME. then the breathing wind-down
-  await expect(page.locator('.time-slam')).toBeVisible({ timeout: 40_000 })
+  await expect(page.locator('.time-slam')).toBeVisible({ timeout: 70_000 })
   await expect(page.locator('.breathe')).toBeVisible({ timeout: 6000 })
   await page.getByRole('button', { name: 'Skip' }).click({ timeout: 15_000 })
 

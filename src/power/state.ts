@@ -10,7 +10,8 @@ import { theme } from '../state/theme'
 import { sizeForLevel, GENERATOR_VERSION } from '../config'
 import { computeScore } from '../state/game'
 import { go } from '../router'
-import { POWER_MS, stageAt, puzzleSpec, comboMultiplier, STAGE_BONUS, winWord, type Stage } from './timeline'
+import { POWER_MS, STAGES, SPINS, stageAt, puzzleSpec, comboMultiplier, STAGE_BONUS, winWord, type Stage } from './timeline'
+import { native, type HrSample } from '../native/bridge'
 
 export type PowerSolve = {
   /** ms since the hour started */
@@ -56,6 +57,8 @@ export type PowerRun = {
   moodAfter?: number
   /** she has seen the results screen */
   seen?: boolean
+  /** heart rate from her Apple Watch during the hour (native app only); t = ms since start */
+  hr?: HrSample[]
 }
 
 /** Dev/test only: speed the hour up (e.g. 60 → one minute). Never set in normal use. */
@@ -99,6 +102,18 @@ export async function powerHistory(): Promise<PowerRun[]> {
 // ---- running ----
 
 let ticker: ReturnType<typeof setInterval> | undefined
+let stopHr: (() => void) | null = null
+
+/** Collect live heart-rate samples from the Watch (native app only). */
+function listenHeartRate() {
+  stopHr?.()
+  stopHr = native.onHeartRate((s) => {
+    const r = power.value
+    if (!r || r.endedAt) return
+    const t = s.t - r.startedAt
+    save({ ...r, hr: [...(r.hr ?? []), { t, bpm: s.bpm }] })
+  })
+}
 function startTicker() {
   clearInterval(ticker)
   ticker = setInterval(() => {
@@ -151,6 +166,14 @@ export async function startPower(opts: { sound: boolean; moodBefore?: number }) 
   save(r)
   powerPhase.value = 'playing'
   startTicker()
+  // the Watch runs its own copy of the clock for haptics and the wrist view
+  listenHeartRate()
+  void native.powerStart({
+    startedAt: now,
+    durationMs: Math.ceil(POWER_MS / SCALE),
+    spins: SPINS.map((s) => Math.round(s.at / SCALE)),
+    stages: STAGES.map((s) => ({ name: s.name, at: Math.round(s.from / SCALE) })),
+  })
   await nextPuzzle()
   go('game')
 }
@@ -160,6 +183,7 @@ export function resumePower() {
   const r = power.value
   if (!r || r.endedAt) return
   startTicker()
+  if (!stopHr) listenHeartRate()
   if (powerElapsed(r) >= POWER_MS) endPower('time')
   else if (!game.value || game.value.mode !== 'power' || game.value.done) void nextPuzzle()
 }
@@ -187,6 +211,7 @@ powerHooks.onSolved = (info: PowerSolveInfo) => {
     score: r.score + score,
     bossDone: r.bossDone || boss,
   })
+  void native.powerUpdate({ combo, score: r.score + score, stage: stage, solved: r.solves.length + 1 })
   burst.value = { word: boss ? 'BOSS DOWN' : winWord(ms, r.solves.length, combo), score, combo, t: Date.now(), boss }
   // a short beat on the solved board, then straight into the next one
   setTimeout(() => {
@@ -198,6 +223,7 @@ powerHooks.onMistake = () => {
   const r = power.value
   if (!r || r.endedAt) return
   save({ ...r, combo: 0, mistakes: r.mistakes + 1 })
+  void native.powerUpdate({ combo: 0, score: r.score, stage: stageAt(powerElapsed(r)).stage, solved: r.solves.length })
 }
 
 export async function endPower(reason: 'time' | 'early') {
@@ -217,9 +243,19 @@ export async function endPower(reason: 'time' | 'early') {
   freezeGame()
   patchProgress({ restDay: localDay() })
   powerPhase.value = 'time'
+  // the Watch's full series is more complete than what streamed live (screen-off gaps etc.)
+  stopHr?.()
+  stopHr = null
+  const { samples } = await native.powerEnd()
+  if (samples.length) {
+    const cur = power.value
+    const full = samples.map((s) => ({ t: s.t - ended.startedAt, bpm: s.bpm })).filter((s) => s.t >= 0)
+    if (cur && full.length >= (cur.hr?.length ?? 0)) save({ ...cur, hr: full })
+  }
   try {
     const list = await powerHistory()
-    await kvSet('powerHours', [...list.filter((x) => x.id !== ended.id), ended])
+    const final = power.value ?? ended
+    await kvSet('powerHours', [...list.filter((x) => x.id !== final.id), final])
   } catch {
     /* the run is still in localStorage */
   }

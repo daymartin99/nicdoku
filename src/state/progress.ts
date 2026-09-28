@@ -2,6 +2,7 @@ import { signal, effect } from '@preact/signals'
 import { lsGet, lsSet, localDay } from '../db'
 import { COOLDOWN_MIN, SICK_COOLDOWN_MIN, SESSION_SIZE, sizeForLevel, GENERATOR_VERSION } from '../config'
 import type { Difficulty } from '../engine/types'
+import { native } from '../native/bridge'
 
 export type SessionResult = {
   level: number
@@ -126,6 +127,8 @@ export function finishSession() {
   let skill = pr.skill
   if (fastClean >= 4) skill = Math.min(1, skill + 1)
   else if (messy >= 3) skill = Math.max(-1, skill - 1)
+  // native app: the break goes into Apple Health as Mindful Minutes
+  void native.logMindful(s.startedAt, Date.now())
   patchProgress({
     session: { ...s, finishedAt: Date.now() },
     bestSessionScore: Math.max(pr.bestSessionScore, score),

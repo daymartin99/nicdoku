@@ -3,6 +3,7 @@
 // "Refresh" when she's not mid-puzzle.
 
 import { signal } from '@preact/signals'
+import { isNative } from './native/bridge'
 import { registerSW } from 'virtual:pwa-register'
 import { lsGet, lsSet } from './db'
 
@@ -16,7 +17,8 @@ let updateSW: ((reload?: boolean) => Promise<void>) | null = null
 let registered = false
 
 export function registerPwa(): void {
-  if (registered || !('serviceWorker' in navigator)) return
+  // the native app bundles everything and updates through TestFlight: no service worker there
+  if (registered || isNative || !('serviceWorker' in navigator)) return
   registered = true
   updateSW = registerSW({
     immediate: true,
@@ -82,6 +84,7 @@ export async function checkPersistence(): Promise<boolean | null> {
 }
 
 export function isStandalone(): boolean {
+  if (isNative) return true // the native app is always 'installed'
   const nav = navigator as Navigator & { standalone?: boolean }
   return (
     nav.standalone === true ||

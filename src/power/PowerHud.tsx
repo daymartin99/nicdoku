@@ -4,6 +4,7 @@ import { POWER_MS, STAGES, stageAt, orientationAt, nextSpin, bpmAt, comboMultipl
 import { spin, resetSpin } from './spin'
 import { startPowerSound, stopPowerSound, whoosh, finalHit } from './sound'
 import { go } from '../router'
+import { native } from '../native/bridge'
 import { BackIcon } from '../components/Icons'
 
 const fmt = (ms: number) => {
@@ -154,7 +155,11 @@ export function Breathe() {
   useEffect(() => {
     const t0 = Date.now()
     const id = setInterval(() => setT(Date.now() - t0), 200)
-    return () => clearInterval(id)
+    return () => {
+      clearInterval(id)
+      // log the breathing she actually did (native app only; needs at least 10 s)
+      if (Date.now() - t0 >= 10_000) void native.logMindful(t0, Date.now())
+    }
   }, [])
   useEffect(() => {
     if (t >= 30_000) go('power-done')

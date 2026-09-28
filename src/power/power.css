@@ -236,3 +236,6 @@
 .pd-peak b { font-size: 17px; color: var(--ink-strong); }
 .pd-peak p { margin: 6px 0 0; line-height: 1.4; font-weight: 400; }
 .pd-thanks { text-align: center; margin: 0; }
+
+.pd-heart p { margin: 6px 0 0; line-height: 1.4; font-weight: 400; }
+.pd-heart b { color: var(--ink-strong); }
