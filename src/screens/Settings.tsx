@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { ResetSection } from '../components/ResetSection'
 import { go } from '../router'
 import { nextPersonalLine } from '../state/theme'
 import { settings, updateSettings } from '../state/settings'
@@ -333,6 +334,8 @@ export function SettingsScreen() {
           </div>
         </div>
       </section>
+
+      <ResetSection onBackup={onExport} busy={busy} />
 
       <section class="set-group">
         <div class="card">

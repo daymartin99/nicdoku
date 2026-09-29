@@ -8,7 +8,7 @@ import { Piece } from '../components/Piece'
 
 export function OnboardingScreen() {
   const [step, setStep] = useState(0)
-  const [level, setLevel] = useState('135')
+  const [level, setLevel] = useState('1')
   const finish = () => {
     const l = parseInt(level, 10)
     setStartLevel(Number.isFinite(l) ? l : 1)
@@ -36,7 +36,7 @@ export function OnboardingScreen() {
       {step === 1 && (
         <div class="ob-card">
           <h1>Where were you up to?</h1>
-          <p>Carry on from your Meowdoku level so the puzzles start at the right size.</p>
+          <p>Starting fresh? Keep it at 1. Coming from another puzzle app? Put the level you reached so the puzzles start at the right size.</p>
           <input
             class="level-input"
             inputMode="numeric"

@@ -192,3 +192,62 @@ test('daily puzzle is identical on a fresh device', async ({ page, browser }) =>
   expect(b.puzzle).toEqual(a.puzzle)
   await ctx.close()
 })
+
+test('start again: a tap does nothing, a 2-second hold wipes progress but keeps family', async ({ page }) => {
+  await skipOnboarding(page, 135)
+  await page.evaluate(async () => {
+    const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
+    localStorage.setItem('nd:progress', JSON.stringify({ ...p, totalScore: 48210 }))
+    await new Promise<void>((res) => {
+      const req = indexedDB.open('nicdoku', 1)
+      req.onupgradeneeded = () => {
+        const s = req.result.createObjectStore('solves', { keyPath: 'id', autoIncrement: true })
+        s.createIndex('day', 'day'); s.createIndex('n', 'n')
+        req.result.createObjectStore('kv')
+      }
+      req.onsuccess = () => {
+        const tx = req.result.transaction(['solves', 'kv'], 'readwrite')
+        tx.objectStore('solves').add({ at: Date.now(), day: '2026-09-29', mode: 'session', level: 1, n: 9, difficulty: 'easy', grade: 1, timeMs: 60000, firstTapMs: 1000, mistakes: 0, hints: 0, assists: 0, undos: 0, clean: true, score: 900, themeId: 'x' })
+        tx.objectStore('kv').put({ members: [{ name: 'Sam', birthday: '2015-05-12' }], specials: [] }, 'family')
+        tx.oncomplete = () => { req.result.close(); res() }
+      }
+    })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Start again…' }).click()
+  await expect(page.getByText(/Level 135 goes back to level 1/)).toBeVisible()
+  await expect(page.getByText(/1 solved puzzles/)).toBeVisible()
+
+  const hold = page.getByRole('button', { name: /Hold for two seconds/ })
+  await hold.scrollIntoViewIfNeeded()
+  const box = (await hold.boundingBox())!
+  // a quick tap must not wipe anything
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down(); await page.waitForTimeout(300); await page.mouse.up()
+  await page.waitForTimeout(500)
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('nd:progress') || '{}').level)).toBe(135)
+
+  // a full hold does
+  await page.mouse.down(); await page.waitForTimeout(2300); await page.mouse.up()
+  await expect(page.getByRole('button', { name: "Let's go" })).toBeVisible({ timeout: 8000 })
+  const after = await page.evaluate(async () => {
+    const counts = await new Promise<{ solves: number; family: unknown }>((res) => {
+      const req = indexedDB.open('nicdoku')
+      req.onsuccess = () => {
+        const tx = req.result.transaction(['solves', 'kv'])
+        const c = tx.objectStore('solves').count()
+        const f = tx.objectStore('kv').get('family')
+        tx.oncomplete = () => res({ solves: c.result, family: f.result })
+      }
+    })
+    return { ...counts, progress: localStorage.getItem('nd:progress'), name: JSON.parse(localStorage.getItem('nd:settings') || '{}').name }
+  })
+  expect(after.solves).toBe(0)
+  expect(after.family).toBeTruthy() // kept by default
+  expect(after.progress === null || JSON.parse(after.progress).level === 1).toBe(true)
+  expect(after.name).toBe('Jo') // settings kept by default
+  // fresh start: level 1
+  await page.getByRole('button', { name: "Let's go" }).click()
+  await expect(page.getByLabel('Starting level')).toHaveValue('1')
+})
