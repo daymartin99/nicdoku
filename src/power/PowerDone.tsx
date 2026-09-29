@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'preact/hooks'
-import { power, powerHistory, setPowerMoodAfter, leavePowerDone, type PowerRun } from './state'
-import { POWER_MS } from './timeline'
+import { power, powerHistory, setPowerMoodAfter, leavePowerDone, runDuration, runMinutes, runMode, type PowerRun } from './state'
+import { progress, restingToday, powerMinutesLeft } from '../state/progress'
 import { MoodTap } from '../components/MoodTap'
 import { BarChart, LineChart } from '../components/charts'
 import type { HrSample } from '../native/bridge'
 import { formatTime } from '../stats/metrics'
 import './power.css'
 
-const BLOCK = 5 * 60_000
-/** bar colour per 5-min block, matching the stages: warm, build, surge, crescendo */
+/** bar colour per twelfth of the run, matching the stages: warm, build, surge, crescendo */
 const STAGE_COLOURS = [...Array(3).fill('#8dd67e'), ...Array(4).fill('#f7a05e'), ...Array(3).fill('#f0507a'), ...Array(2).fill('#9b7be0')]
 
+/** Puzzles solved in each twelfth of the run (5-minute slices of an hour, 50 s of a 10-minute run). */
 function blocks(r: PowerRun) {
+  const slice = runDuration(r) / 12
   const out = Array.from({ length: 12 }, () => 0)
-  for (const s of r.solves) out[Math.min(11, Math.floor(s.at / BLOCK))]++
+  for (const s of r.solves) out[Math.min(11, Math.floor(s.at / slice))]++
   return out
 }
+
+const MODE_LABEL = { calm: 'Calm', normal: 'Normal', wild: 'Wild' } as const
 
 /** Minute-by-minute median heart rate, plus resting / peak / end summaries. */
 function heartSummary(hr: HrSample[]) {
@@ -44,6 +47,12 @@ function endLine(r: PowerRun) {
   return 'The bell went mid-puzzle: right in the thick of it.'
 }
 
+/** "7:30" style minute labels for any run length */
+function fmtMin(m: number) {
+  const secs = Math.round(m * 60)
+  return secs % 60 === 0 ? `${secs / 60}` : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+}
+
 /** Results after the crescendo: what she did, the peak and the end, then rest until tomorrow. */
 export function PowerDoneScreen() {
   const r = power.value
@@ -52,7 +61,10 @@ export function PowerDoneScreen() {
   useEffect(() => {
     powerHistory()
       .then((list) => {
-        const older = list.filter((x) => x.id !== r?.id && x.endedAt).sort((a, b) => b.startedAt - a.startedAt)
+        // compare only with an earlier run of the same length
+        const older = list
+          .filter((x) => x.id !== r?.id && x.endedAt && (x.durationMs ?? 3_600_000) === (r?.durationMs ?? 3_600_000))
+          .sort((a, b) => b.startedAt - a.startedAt)
         setPrev(older[0] ?? null)
       })
       .catch(() => {})
@@ -68,13 +80,22 @@ export function PowerDoneScreen() {
   const up = prev && n > prev.solves.length ? n - prev.solves.length : 0
   const scoreUp = prev && r.score > prev.score
   const minutes = Math.round(((r.endedAt ?? r.startedAt) - r.startedAt) / 60_000)
+  const chosen = runMinutes(r)
+  const mode = runMode(r)
+  const sliceMin = chosen / 12
+  const restLine = restingToday()
+    ? 'rest until tomorrow'
+    : `rest until ${new Date(progress.value.powerRestUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })}`
+  const left = powerMinutesLeft()
 
   return (
     <div class="screen power-done fade-in">
       <div class="pd-hero">
         <div class="pd-bolt" aria-hidden="true">⚡</div>
-        <h1>Power Hour done</h1>
-        <p class="muted">{r.endReason === 'early' ? `${minutes} minutes` : 'The full hour'} · rest until tomorrow</p>
+        <h1>{mode === 'wild' ? 'Run complete' : 'Power run done'}</h1>
+        <p class="muted">
+          {r.endReason === 'early' ? `${minutes} of ${chosen} minutes` : `The full ${chosen} minutes`} · {MODE_LABEL[mode]} · {restLine}
+        </p>
       </div>
 
       <div class="card pd-stats">
@@ -95,9 +116,13 @@ export function PowerDoneScreen() {
       </div>
 
       <div class="card">
-        <span class="label">Your crescendo (puzzles per 5 min)</span>
+        <span class="label">Your crescendo (puzzles per {sliceMin >= 1 ? `${Math.round(sliceMin * 10) / 10} min` : `${Math.round(sliceMin * 60)} s`})</span>
         <BarChart
-          data={b.map((v, i) => ({ label: `${i * 5}–${i * 5 + 5} min`, value: v, tick: i % 3 === 0 ? `${i * 5}` : undefined }))}
+          data={b.map((v, i) => ({
+            label: `${fmtMin(i * sliceMin)}–${fmtMin((i + 1) * sliceMin)}`,
+            value: v,
+            tick: i % 3 === 0 ? fmtMin(i * sliceMin) : undefined,
+          }))}
           format={(v: number) => `${v} puzzle${v === 1 ? '' : 's'}`}
           ariaLabel="Puzzles solved in each 5-minute block of the hour"
           colors={STAGE_COLOURS}
@@ -129,7 +154,7 @@ export function PowerDoneScreen() {
         <b>Peak and end</b>
         <p>
           {r.bestCombo >= 2
-            ? `Your peak: ${r.bestCombo} clean in a row at ${formatTime(Math.min(r.peakAt, POWER_MS))}.`
+            ? `Your peak: ${r.bestCombo} clean in a row at ${formatTime(Math.min(r.peakAt, runDuration(r)))}.`
             : `${clean} clean solve${clean === 1 ? '' : 's'} this hour.`}{' '}
           {endLine(r)}
         </p>
@@ -153,7 +178,7 @@ export function PowerDoneScreen() {
       )}
 
       <button class="btn" onClick={leavePowerDone}>
-        See you tomorrow
+        {restingToday() ? 'See you tomorrow' : left > 0 ? `Rest now · ${left} min of Power left today` : 'Done'}
       </button>
     </div>
   )

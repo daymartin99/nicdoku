@@ -74,3 +74,50 @@ describe('power hour timeline', () => {
     expect(winWord(55 * MIN, 0, 0)).toMatch(/^[A-Z∞]+$/)
   })
 })
+
+describe('run lengths and modes', () => {
+  it('maps any run length onto the same 60-minute arc', async () => {
+    const { arcMs, realMs } = await import('./timeline')
+    // halfway through a 10-minute run is halfway through the arc
+    expect(arcMs(5 * MIN, 10 * MIN)).toBe(30 * MIN)
+    expect(arcMs(15 * MIN, 30 * MIN)).toBe(30 * MIN)
+    expect(arcMs(99 * MIN, 10 * MIN)).toBe(POWER_MS) // capped
+    // the first spin (10 min of arc) lands at 1:40 of a 10-minute run
+    expect(realMs(SPINS[0].at, 10 * MIN)).toBe(100_000)
+    expect(realMs(SPINS[0].at, 45 * MIN)).toBe(7.5 * MIN)
+  })
+
+  it('calm never spins and stays gentle; wild beats faster', async () => {
+    const { orientationAt, nextSpin, stageAt, bpmAt, spinsFor } = await import('./timeline')
+    expect(spinsFor('calm')).toEqual([])
+    expect(orientationAt(59 * MIN, 'calm').deg).toBe(0)
+    expect(nextSpin(0, 'calm')).toBeNull()
+    expect(stageAt(POWER_MS, 'calm').intensity).toBeLessThanOrEqual(0.3)
+    expect(bpmAt(POWER_MS, 'calm')).toBeLessThan(bpmAt(POWER_MS, 'normal'))
+    expect(bpmAt(POWER_MS, 'wild')).toBeGreaterThan(bpmAt(POWER_MS, 'normal'))
+  })
+
+  it('short runs get a boss they can actually finish', () => {
+    const boss10 = puzzleSpec(51 * MIN, 9, false, 10)
+    const boss30 = puzzleSpec(51 * MIN, 9, false, 30)
+    const boss60 = puzzleSpec(51 * MIN, 9, false, 60)
+    expect(boss10).toMatchObject({ n: 9, difficulty: 'hard', boss: true })
+    expect(boss30).toMatchObject({ n: 10, boss: true })
+    expect(boss60).toMatchObject({ n: 11, difficulty: 'expert', boss: true })
+  })
+
+  it('calm puzzles are a step easier and never bigger than usual', () => {
+    const calm = puzzleSpec(51 * MIN, 9, false, 60, 'calm')
+    expect(calm.n).toBeLessThanOrEqual(9)
+    expect(calm.difficulty).toBe('hard')
+    expect(puzzleSpec(2 * MIN, 9, false, 60, 'calm').difficulty).toBe('easy')
+  })
+
+  it('stage names and win words change with the mode', async () => {
+    const { stageName } = await import('./timeline')
+    expect(stageName('crescendo', 'wild')).toBe('SINGULARITY')
+    expect(stageName('warm', 'calm')).toBe('Settle in')
+    expect(winWord(20 * MIN, 1, 0, 'wild')).toMatch(/[A-Z]/)
+    expect(winWord(20 * MIN, 1, 0, 'calm')).not.toMatch(/!!/)
+  })
+})

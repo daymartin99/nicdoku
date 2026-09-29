@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { power, powerPhase, powerElapsed, powerNow, burst, endPower } from './state'
+import { power, powerPhase, powerElapsed, powerArc, powerNow, burst, endPower, runDuration, runMode, runMinutes } from './state'
 import { POWER_MS, STAGES, stageAt, orientationAt, nextSpin, bpmAt, comboMultiplier } from './timeline'
 import { spin, resetSpin } from './spin'
-import { startPowerSound, stopPowerSound, whoosh, finalHit } from './sound'
+import { startPowerSound, stopPowerSound, whoosh, finalHit, glitchSting } from './sound'
 import { go } from '../router'
 import { native } from '../native/bridge'
 import { BackIcon } from '../components/Icons'
@@ -16,10 +16,11 @@ const fmt = (ms: number) => {
 export function PowerDriver() {
   const lastSpinAt = useRef<number>(-1)
   const r = power.value
-  const ms = powerElapsed(r, powerNow.value)
+  const mode = runMode(r)
+  const ms = powerArc(r, powerNow.value)
 
   useEffect(() => {
-    if (r?.sound && !r.endedAt) startPowerSound(() => powerElapsed())
+    if (r?.sound && !r.endedAt) startPowerSound(() => powerArc(), mode, POWER_MS / runDuration(r))
     return () => stopPowerSound()
   }, [r?.id, r?.sound, !!r?.endedAt])
 
@@ -27,7 +28,7 @@ export function PowerDriver() {
 
   // orientation follows the schedule; a spin that happens while she watches gets a whoosh and,
   // for rock/wobble, a short pulse animation. Reopening mid-hour just restores the orientation.
-  const o = orientationAt(ms)
+  const o = orientationAt(ms, mode)
   const lastAt = o.last?.at ?? 0
   useEffect(() => {
     const live = lastSpinAt.current !== -1 && lastAt !== lastSpinAt.current
@@ -57,13 +58,14 @@ export function PowerDriver() {
 
 export function PowerHeader() {
   const r = power.value
-  const ms = powerElapsed(r, powerNow.value)
-  const left = POWER_MS - ms
-  const st = stageAt(ms)
-  const frac = ms / POWER_MS
+  const real = powerElapsed(r, powerNow.value)
+  const left = runDuration(r) - real
+  const st = stageAt(powerArc(r, powerNow.value), runMode(r))
+  const frac = real / runDuration(r)
   const R = 25, C = 2 * Math.PI * R
   const onBack = () => {
-    if (confirm('End Power Hour now? It counts as today\'s, and everything rests until tomorrow.')) void endPower('early')
+    const mins = runMinutes(r)
+    if (confirm(`End this ${mins}-minute run now? It still counts, and everything rests for ${mins} minutes.`)) void endPower('early')
   }
   return (
     <div class="topbar game-top power-top">
@@ -101,9 +103,10 @@ export function ComboPill() {
 }
 
 export function StageBar() {
-  const ms = powerElapsed(power.value, powerNow.value)
-  const next = nextSpin(ms)
-  const toSpin = next ? next.at - ms : Infinity
+  const r = power.value
+  const ms = powerArc(r, powerNow.value)
+  const next = nextSpin(ms, runMode(r))
+  const toSpin = next ? (next.at - ms) * (runDuration(r) / POWER_MS) : Infinity
   return (
     <div class="stage-bar">
       <div class="stage-track">
@@ -129,10 +132,13 @@ export function Burst() {
     const id = setTimeout(() => force((x) => x + 1), 1200)
     return () => clearTimeout(id)
   }, [b?.t])
+  useEffect(() => {
+    if (b && power.value?.sound) glitchSting()
+  }, [b?.t])
   if (!b || Date.now() - b.t > 1150) return null
   return (
     <div key={b.t} class={`burst${b.boss ? ' boss' : ''}`} aria-live="polite">
-      <b class="burst-word">{b.word}</b>
+      <b class="burst-word" data-text={b.word}>{b.word}</b>
       <span class="burst-score">
         +{b.score.toLocaleString('en-GB')}
         {b.combo >= 2 && <em> · {b.combo} in a row</em>}
@@ -142,9 +148,11 @@ export function Burst() {
 }
 
 export function TimeSlam() {
+  const mode = runMode(power.value)
+  const word = mode === 'wild' ? 'SYSTEM HALT' : mode === 'calm' ? 'Time.' : 'TIME.'
   return (
-    <div class="time-slam" role="alert">
-      <b>TIME.</b>
+    <div class={`time-slam slam-${mode}`} role="alert">
+      <b data-text={word}>{word}</b>
     </div>
   )
 }
@@ -169,7 +177,9 @@ export function Breathe() {
     <div class="breathe" role="dialog" aria-label="Breathe">
       <div class={`breathe-circle${inPhase ? ' in' : ' out'}`} />
       <p class="breathe-word">{inPhase ? 'Breathe in' : 'and out'}</p>
-      <p class="breathe-sub">That was the whole hour. Let it settle.</p>
+      <p class="breathe-sub">
+        {runMode(power.value) === 'wild' ? 'Reboot complete. Let it all settle.' : 'That was the whole run. Let it settle.'}
+      </p>
       {t > 10_000 && (
         <button class="link-btn" onClick={() => go('power-done')}>
           Skip
@@ -181,14 +191,18 @@ export function Breathe() {
 
 /** CSS variables that drive the whole screen's intensity. */
 export function powerStyle(): Record<string, string | number> {
-  const ms = powerElapsed(power.value, powerNow.value)
-  const st = stageAt(ms)
+  const r = power.value
+  const mode = runMode(r)
+  const ms = powerArc(r, powerNow.value)
+  const st = stageAt(ms, mode)
   return {
     '--pi': st.intensity.toFixed(3),
-    '--beat': `${(60 / bpmAt(ms)).toFixed(3)}s`,
+    '--beat': `${(60 / bpmAt(ms, mode)).toFixed(3)}s`,
   }
 }
 
+/** stage-… and mode-… classes for the game screen */
 export function stageClass(): string {
-  return `stage-${stageAt(powerElapsed(power.value, powerNow.value)).stage}`
+  const r = power.value
+  return `stage-${stageAt(powerArc(r, powerNow.value)).stage} mode-${runMode(r)}`
 }

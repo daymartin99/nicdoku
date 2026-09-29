@@ -1,3 +1,4 @@
+@import './modes.css';
 /* ---------- Power Hour ----------
    Intensity is driven by --pi (0 → 1 across the hour) and --beat (heartbeat period).
    Pulses are slow colour/scale swells, never flashes: the fastest beat is ~2 per second,

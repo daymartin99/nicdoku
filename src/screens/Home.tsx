@@ -11,8 +11,8 @@ import { JUST_ONE_MORE, SESSION_SIZE } from '../config'
 import { Piece } from '../components/Piece'
 import { InstallHint } from '../components/InstallHint'
 import { ChartIcon, CalendarIcon, GearIcon } from '../components/Icons'
-import { powerDoneToday, power } from '../power/state'
-import { sickToday, setSickToday } from '../state/progress'
+import { powerDoneToday, power, runMinutes } from '../power/state'
+import { sickToday, setSickToday, restingToday, powerWaiting, powerMinutesLeft } from '../state/progress'
 import { MoodTap } from '../components/MoodTap'
 import { saveMood, type MoodValue } from '../mood'
 import './home.css'
@@ -86,7 +86,8 @@ export function HomeScreen() {
   const [factOpen, setFactOpen] = useState(false)
   const [askMood, setAskMood] = useState(false)
   const pr = progress.value
-  const now = useNow(inCooldown() ? 30_000 : 60_000, pr.cooldownUntil)
+  const wakeAt = Math.max(pr.cooldownUntil > Date.now() ? pr.cooldownUntil : 0, pr.powerRestUntil > Date.now() ? pr.powerRestUntil : 0)
+  const now = useNow(inCooldown() || powerWaiting() ? 30_000 : 60_000, wakeAt)
   useEffect(() => {
     allSolves().then(setSolves).catch(() => setSolves([]))
     warmUp()
@@ -104,7 +105,13 @@ export function HomeScreen() {
   const st = solves && solves.length > 0 ? streak(solves, today) : null
   const head = solves ? headline(solves, today) : ''
   const herBirthday = r.isBigDay && t.id === 'birthday-queen'
-  const resting = powerDoneToday(today)
+  // resting = today's Power minutes are used up, or the rest after a Power run
+  const doneForDay = restingToday(today)
+  const waiting = powerWaiting(now)
+  const resting = doneForDay || waiting
+  const powerLeft = powerMinutesLeft(today)
+  const canPower = !powerDoneToday(today)
+  const backAt = new Date(pr.powerRestUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
   const sick = sickToday(today)
   const run = power.value
   const ranToday = run?.day === today && run.endedAt ? run : null
@@ -170,12 +177,17 @@ export function HomeScreen() {
       {resting ? (
         <div class="card rest-card">
           <span class="rest-bolt" aria-hidden="true">⚡</span>
-          <b>All done for today, {name}</b>
+          <b>{doneForDay ? `All done for today, ${name}` : `Resting after your ${runMinutes(ranToday)}-minute run`}</b>
           <span class="muted">
-            {ranToday ? `Power Hour: ${ranToday.solves.length} puzzle${ranToday.solves.length === 1 ? '' : 's'}, ${ranToday.score.toLocaleString('en-GB')} points. ` : ''}
-            Everything's resting until tomorrow.
+            {ranToday
+              ? `Power: ${ranToday.solves.length} puzzle${ranToday.solves.length === 1 ? '' : 's'}, ${ranToday.score.toLocaleString('en-GB')} points. `
+              : ''}
+            {doneForDay ? "Everything's resting until tomorrow." : `Everything's resting until ${backAt}.`}
           </span>
-          <button class="link-btn" onClick={() => go('stats')}>See your Power Hour stats</button>
+          {!doneForDay && powerLeft > 0 && (
+            <span class="rest-left">{powerLeft} Power minutes left today</span>
+          )}
+          <button class="link-btn" onClick={() => go('stats')}>See your Power stats</button>
         </div>
       ) : askMood ? (
         <div class="card mood-card">
@@ -236,11 +248,17 @@ export function HomeScreen() {
       )}
 
       {!resting && (
-        <button class="card power-card" disabled={loading.value || otherGameOpen} onClick={() => go('power-intro')}>
+        <button class="card power-card" disabled={loading.value || otherGameOpen || !canPower} onClick={() => go('power-intro')}>
           <span class="power-bolt" aria-hidden="true">⚡</span>
           <span class="daily-text">
-            <b>Power Hour</b>
-            <span class="muted">{otherGameOpen ? 'Finish your puzzle first' : 'One intense hour, then done for the day'}</span>
+            <b>Power</b>
+            <span class="muted">
+              {otherGameOpen
+                ? 'Finish your puzzle first'
+                : powerLeft >= 60
+                  ? '10, 30, 45 or 60 minutes · calm, normal or wild'
+                  : `${powerLeft} minutes left today · calm, normal or wild`}
+            </span>
           </span>
         </button>
       )}

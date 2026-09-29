@@ -10,14 +10,16 @@ import { unlockAudio, feedback } from '../feedback'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
 import { unspinPoint } from '../power/spin'
+import { boardMode, powerPalette, powerPiece } from '../power/palette'
 
 const X_PATH = 'M4.7 4.7l14.6 14.6M19.3 4.7 4.7 19.3'
 
 /** White X; `wrong` = red X with a dark outline (readable on orange/coral); `draft` = pencil/preview. */
 const XMark = ({ wrong = false, draft = false }: { wrong?: boolean; draft?: boolean }) => (
-  <svg class={`xmark${draft ? ' draft' : ''}`} viewBox="0 0 24 24" aria-hidden="true">
+  <svg class={`xmark${draft ? ' draft' : ''}${wrong ? ' wrong' : ''}`} viewBox="0 0 24 24" aria-hidden="true">
     {wrong && <path d={X_PATH} stroke="#5C1D2A" stroke-width={6.2} stroke-linecap="round" fill="none" />}
     <path
+      class="x-main"
       d={X_PATH}
       stroke={wrong ? '#FF4F4F' : '#fff'}
       stroke-width={draft ? 3 : 3.85}
@@ -49,7 +51,7 @@ export function Board() {
   const [pressed, setPressed] = useState(-1)
   if (!g) return null
   const { n, regions } = g.puzzle
-  const palette = theme.value.palette
+  const palette = powerPalette(g.mode === 'power' ? boardMode.value : null, theme.value.palette)
   const colourOf = assignColours(n, regions, palette)
   const hint = activeHint.value
   const focus = new Set(hint?.focus ?? [])
@@ -199,11 +201,11 @@ export function Board() {
       >
         {m === M_X && <XMark />}
         {m === M_WRONG && <XMark wrong />}
-        {m === M_PIECE && <Piece art={pieceArt.value} />}
+        {m === M_PIECE && <Piece art={powerPiece(g.mode === 'power' ? boardMode.value : null, pieceArt.value)} />}
         {d === 1 && <XMark draft />}
         {d === 2 && (
           <span class="draft-piece">
-            <Piece art={pieceArt.value} />
+            <Piece art={powerPiece(g.mode === 'power' ? boardMode.value : null, pieceArt.value)} />
           </span>
         )}
         {m === M_EMPTY && d !== 1 && previewX.has(i) && <XMark draft />}

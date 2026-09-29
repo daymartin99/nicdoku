@@ -1,0 +1,205 @@
+/* =====================================================================
+   Power intro: length picker + intensity slider
+   ===================================================================== */
+.pi-title { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
+.pi-picks { display: flex; flex-direction: column; gap: 10px; }
+.pi-lengths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pi-lengths button {
+  min-height: 60px; border-radius: 16px; background: var(--card-soft); font-size: 22px; font-weight: 700; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  box-shadow: inset 0 0 0 2px var(--line); transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+}
+.pi-lengths button small { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-top: 3px; }
+.pi-lengths button.on { background: #2b1636; color: #fff; box-shadow: 0 0 0 3px rgba(255, 79, 123, 0.35); }
+.pi-lengths button.on small { color: #ffd45e; }
+.pi-lengths button:disabled { opacity: 0.35; }
+.pi-lengths button:active { transform: scale(0.95); }
+.pi-note { margin: 0; font-size: 14px; line-height: 1.35; color: var(--ink-soft); font-weight: 500; }
+.pi-warn { margin: 0; font-size: 14px; line-height: 1.35; color: #b0304f; font-weight: 600; }
+
+.pi-slider { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 0; }
+.pi-slider input[type='range'] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: transparent; margin: 0;
+}
+.pi-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 14px; border-radius: 999px;
+  background: linear-gradient(90deg, #9fd3b0 0%, #f2922f 50%, #ff2bd6 78%, #00f0ff 100%);
+}
+.pi-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 34px; height: 34px; margin-top: -10px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 3px var(--ink);
+}
+.pi-slider input[type='range']::-moz-range-track { height: 14px; border-radius: 999px; background: linear-gradient(90deg, #9fd3b0, #f2922f, #ff2bd6, #00f0ff); }
+.pi-slider input[type='range']::-moz-range-thumb { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); }
+.pi-slider-labels { display: flex; justify-content: space-between; }
+.pi-slider-labels button { min-height: 36px; padding: 0 6px; font-size: 15px; font-weight: 600; color: var(--ink-soft); }
+.pi-slider-labels button.on { color: var(--ink-strong); }
+
+/* hero restyles with the chosen mode */
+.pi-calm .pi-hero { background: linear-gradient(160deg, #e9f4ec, #cfe6d6); color: #35523f; }
+.pi-calm .power-go { background: linear-gradient(90deg, #7cc493, #5fb9a6); }
+.pi-wild .pi-hero {
+  background: #07000f;
+  color: #e9fbff;
+  box-shadow: 0 0 0 2px #ff2bd6, 0 0 24px rgba(255, 43, 214, 0.45), 0 0 48px rgba(0, 240, 255, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+.pi-wild .pi-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px);
+}
+.pi-wild .pi-title {
+  color: #fff; text-shadow: -2px 0 #ff2bd6, 2px 0 #00f0ff;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace; text-transform: uppercase; letter-spacing: 3px;
+}
+.pi-wild .pi-lead { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 15px; }
+.pi-wild .pi-stages span { color: #00f0ff; opacity: 0.85; }
+.pi-wild .power-go {
+  background: #07000f; color: #fff; font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 1px;
+  box-shadow: 0 0 0 2px #00f0ff, 0 0 18px rgba(0, 240, 255, 0.55), 0 6px 0 rgba(255, 43, 214, 0.6);
+  text-shadow: -1px 0 #ff2bd6, 1px 0 #00f0ff;
+}
+.rest-left { font-size: 15px; font-weight: 600; color: var(--ink-strong); }
+
+/* =====================================================================
+   CALM: soft sage, never dark, no drama
+   ===================================================================== */
+.game-screen.power.mode-calm {
+  background: color-mix(in oklab, #f7f1ec, #d9ecdf calc(var(--pi) * 250%));
+  --p-ink: #4a6553;
+}
+.game-screen.power.mode-calm .board-wrap::before {
+  background: radial-gradient(circle, rgba(124, 196, 147, 0.25), transparent 68%);
+}
+.game-screen.power.mode-calm .ring-fg { stroke: #7cc493; }
+.game-screen.power.mode-calm .burst-word {
+  -webkit-text-stroke-color: #5fae7f; text-shadow: 0 4px 0 rgba(40, 80, 55, 0.35); font-size: clamp(34px, 10vw, 52px);
+}
+.time-slam.slam-calm { background: rgba(233, 244, 236, 0.94); }
+.time-slam.slam-calm b { color: #35523f; -webkit-text-stroke: 0; font-weight: 600; animation: fadeIn 0.8s ease both; }
+
+/* =====================================================================
+   WILD: neon cyberpunk system overload
+   Glitches are slices and shifts, never full-screen flashes; bursts are at least
+   2.5 s apart (under the 3-per-second guideline). Reduced motion turns them off.
+   ===================================================================== */
+.game-screen.power.mode-wild {
+  --p-ink: #eafcff;
+  --glitch-period: calc(6s - var(--pi) * 3.5s);
+  background:
+    radial-gradient(120% 60% at 15% 0%, rgba(255, 43, 214, calc(0.18 + var(--pi) * 0.35)), transparent 60%),
+    radial-gradient(120% 60% at 90% 100%, rgba(0, 240, 255, calc(0.14 + var(--pi) * 0.3)), transparent 60%),
+    #07000f;
+}
+/* CRT scanlines, slowly rolling */
+.game-screen.power.mode-wild::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 40;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 3px);
+  animation: scan-roll 9s linear infinite;
+}
+@keyframes scan-roll { to { background-position: 0 90px; } }
+
+/* chromatic-split text */
+.mode-wild .clock-text b, .mode-wild .power-score b, .mode-wild .clock-text span {
+  color: #fff;
+  text-shadow: calc(-1px - var(--pi) * 2px) 0 #ff2bd6, calc(1px + var(--pi) * 2px) 0 #00f0ff;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+.mode-wild .power-score span { color: #00f0ff; }
+.mode-wild .ring-bg { stroke: rgba(0, 240, 255, 0.2); }
+.mode-wild .ring-fg { stroke: #ff2bd6; filter: drop-shadow(0 0 4px #ff2bd6); }
+.mode-wild .round-btn, .mode-wild .pill, .mode-wild .tool {
+  background: rgba(10, 0, 25, 0.85);
+  color: #eafcff;
+  box-shadow: 0 0 0 1.5px rgba(0, 240, 255, 0.55), 0 0 14px rgba(0, 240, 255, 0.25);
+}
+.mode-wild .combo-x { color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.8); }
+.mode-wild .combo-n { color: #ff9ef5; }
+.mode-wild .combo-pill.hot { box-shadow: 0 0 0 2px #ff2bd6, 0 0 22px rgba(255, 43, 214, 0.7); }
+.mode-wild .stage-seg { background: rgba(0, 240, 255, 0.12); }
+.mode-wild .stage-seg-warm i { background: #00f0ff; }
+.mode-wild .stage-seg-build i { background: #39ff14; }
+.mode-wild .stage-seg-surge i { background: #ff2bd6; }
+.mode-wild .stage-seg-crescendo i { background: linear-gradient(90deg, #ff2bd6, #00f0ff, #ffe600); }
+.mode-wild .spin-warn { color: #ffe600; font-family: ui-monospace, Menlo, monospace; text-shadow: 0 0 8px #ffe600; }
+.mode-wild .tool-label { font-family: ui-monospace, Menlo, monospace; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+
+/* the board: neon cells, dark X marks, glowing pieces and glitch bursts */
+.game-screen.power.mode-wild .board-card {
+  background: #0b0018;
+  box-shadow:
+    0 0 0 2px #ff2bd6,
+    0 0 calc(12px + var(--pi) * 30px) rgba(255, 43, 214, 0.6),
+    0 0 calc(20px + var(--pi) * 40px) rgba(0, 240, 255, 0.35);
+  animation: glitch-burst var(--glitch-period) steps(1, end) infinite;
+}
+.mode-wild .xmark:not(.wrong) .x-main { stroke: #12001f; }
+.mode-wild .cell .piece svg { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 8px rgba(255, 43, 214, 0.9)); }
+.game-screen.power.mode-wild .board-wrap::before {
+  background: radial-gradient(circle, rgba(255, 43, 214, calc(0.2 + var(--pi) * 0.4)), rgba(0, 240, 255, 0.12) 50%, transparent 70%);
+}
+/* two quick slice-shifts per burst, then still; no brightness flash */
+@keyframes glitch-burst {
+  0%, 91%, 100% { transform: none; clip-path: none; }
+  92% { transform: translateX(calc(-3px - var(--pi) * 6px)); clip-path: inset(18% 0 52% 0); }
+  95% { transform: translateX(calc(3px + var(--pi) * 6px)) skewX(-4deg); clip-path: inset(58% 0 12% 0); }
+}
+
+/* glitch word: two offset colour ghosts behind the text */
+.mode-wild .burst-word {
+  position: relative;
+  color: #fff;
+  -webkit-text-stroke: 0;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: clamp(28px, 8.5vw, 48px);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+}
+.mode-wild .burst-word::before, .mode-wild .burst-word::after {
+  content: attr(data-text);
+  position: absolute; inset: 0;
+  mix-blend-mode: screen;
+  animation: ghost 0.4s steps(2, end) 2;
+}
+.mode-wild .burst-word::before { color: #ff2bd6; transform: translate(-3px, 1px); clip-path: inset(0 0 55% 0); }
+.mode-wild .burst-word::after { color: #00f0ff; transform: translate(3px, -1px); clip-path: inset(50% 0 0 0); }
+@keyframes ghost { 50% { transform: translate(0, 0); } }
+.mode-wild .burst-score { font-family: ui-monospace, Menlo, monospace; color: #39ff14; text-shadow: 0 0 8px #39ff14; }
+.mode-wild .burst-score em { color: #ffe600; }
+
+.time-slam.slam-wild { background: rgba(7, 0, 15, 0.95); }
+.time-slam.slam-wild b {
+  position: relative;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: clamp(40px, 13vw, 76px);
+  letter-spacing: 3px;
+  -webkit-text-stroke: 0;
+  color: #fff;
+  text-shadow: -3px 0 #ff2bd6, 3px 0 #00f0ff, 0 0 30px rgba(255, 43, 214, 0.8);
+}
+.time-slam.slam-wild b::before, .time-slam.slam-wild b::after {
+  content: attr(data-text); position: absolute; inset: 0; mix-blend-mode: screen;
+  animation: ghost 0.5s steps(2, end) 2;
+}
+.time-slam.slam-wild b::before { color: #ff2bd6; clip-path: inset(0 0 60% 0); transform: translateX(-6px); }
+.time-slam.slam-wild b::after { color: #00f0ff; clip-path: inset(55% 0 0 0); transform: translateX(6px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .game-screen.power.mode-wild .board-card,
+  .game-screen.power.mode-wild::after,
+  .mode-wild .burst-word::before, .mode-wild .burst-word::after,
+  .time-slam.slam-wild b::before, .time-slam.slam-wild b::after { animation: none !important; }
+}
+
+/* ---- polish after screenshots ---- */
+/* wild: keep the score readable over a busy board */
+.mode-wild .burst-score { background: rgba(7, 0, 15, 0.78); padding: 2px 12px; border-radius: 999px; box-shadow: 0 0 0 1px rgba(57, 255, 20, 0.5); }
+/* calm: soft greens for the stage bar, no warm glow on the board */
+.mode-calm .stage-seg-warm i { background: #bfe3c8; }
+.mode-calm .stage-seg-build i { background: #9fd3b0; }
+.mode-calm .stage-seg-surge i { background: #7cc493; }
+.mode-calm .stage-seg-crescendo i { background: #5fae7f; }
+.game-screen.power.mode-calm .board-card { box-shadow: 0 0 0 1px rgba(124, 196, 147, 0.4), var(--shadow-lg); }

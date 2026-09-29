@@ -50,11 +50,11 @@ test('power hour: start → play → spins → TIME. → breathe → results →
   page.on('dialog', (d) => d.accept())
   await setup(page)
 
-  await page.getByRole('button', { name: /Power Hour/ }).click()
-  await expect(page.getByRole('heading', { name: 'Power Hour' })).toBeVisible()
+  await page.locator('.power-card').click()
+  await expect(page.getByRole('heading', { name: 'Power', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('switch', { name: /Heartbeat sound/ }).click() // off for the test
-  await page.getByRole('button', { name: /Start the hour/ }).click()
+  await page.getByRole('switch', { name: /sound/i }).click() // off for the test
+  await page.getByRole('button', { name: /Start 60 minutes/ }).click()
 
   await expect(page.locator('.game-screen.power')).toBeVisible()
   await expect(page.locator('.power-clock')).toBeVisible()
@@ -79,7 +79,7 @@ test('power hour: start → play → spins → TIME. → breathe → results →
   await expect(page.locator('.breathe')).toBeVisible({ timeout: 6000 })
   await page.getByRole('button', { name: 'Skip' }).click({ timeout: 15_000 })
 
-  await expect(page.getByRole('heading', { name: 'Power Hour done' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Power run done/ })).toBeVisible()
   await expect(page.locator('.pd-stats .big-num').first()).not.toHaveText('0')
   await page.getByRole('button', { name: 'Skip' }).click() // mood after
   await page.getByRole('button', { name: 'See you tomorrow' }).click()
@@ -96,10 +96,10 @@ test('power hour: start → play → spins → TIME. → breathe → results →
 test('power hour survives closing the app mid-hour', async ({ page }) => {
   page.on('dialog', (d) => d.accept())
   await setup(page)
-  await page.getByRole('button', { name: /Power Hour/ }).click()
+  await page.locator('.power-card').click()
   await page.getByRole('button', { name: 'Skip' }).click()
-  await page.getByRole('switch', { name: /Heartbeat sound/ }).click()
-  await page.getByRole('button', { name: /Start the hour/ }).click()
+  await page.getByRole('switch', { name: /sound/i }).click()
+  await page.getByRole('button', { name: /Start 60 minutes/ }).click()
   await expect(page.locator('.game-screen.power')).toBeVisible()
   await page.waitForTimeout(1500)
   await page.reload()
@@ -113,4 +113,69 @@ test('gentle day switch shortens rests and can be turned off', async ({ page }) 
   await expect(page.getByText('Gentle day')).toBeVisible()
   await page.getByRole('button', { name: 'Turn off' }).click()
   await expect(page.getByText('Gentle day')).toHaveCount(0)
+})
+
+async function openIntro(page: Page) {
+  await page.locator('.power-card').click()
+  await expect(page.locator('.power-intro')).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click() // mood
+  await page.getByRole('switch', { name: /sound/i }).click() // sound off for tests
+}
+
+test('10-minute wild run: neon board, SYSTEM HALT, rests 10 min, 50 min left', async ({ page }) => {
+  test.setTimeout(120_000)
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  page.on('dialog', (d) => d.accept())
+  await setup(page)
+  await openIntro(page)
+  await page.locator('.pi-lengths button', { hasText: '10' }).click()
+  await page.locator('.pi-slider-labels button', { hasText: 'Wild' }).click()
+  await expect(page.locator('.power-intro.pi-wild')).toBeVisible()
+  await page.getByRole('button', { name: /Start 10 minutes/ }).click()
+
+  await expect(page.locator('.game-screen.power.mode-wild')).toBeVisible()
+  // neon palette on the board
+  const bg = await page.locator('.board .cell').first().evaluate((el) => getComputedStyle(el).backgroundColor)
+  const neon = ['rgb(255, 43, 214)', 'rgb(0, 240, 255)', 'rgb(57, 255, 20)', 'rgb(255, 230, 0)', 'rgb(255, 106, 0)', 'rgb(176, 38, 255)',
+    'rgb(0, 255, 156)', 'rgb(255, 56, 96)', 'rgb(77, 124, 255)', 'rgb(255, 158, 245)', 'rgb(198, 255, 0)']
+  expect(neon).toContain(bg)
+  // a 10-minute run at 60× lasts 10 s, then the wild ending
+  await expect(page.locator('.time-slam.slam-wild')).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('.time-slam b')).toHaveText('SYSTEM HALT')
+  await expect(page.locator('.breathe')).toBeVisible({ timeout: 6000 })
+  await page.getByRole('button', { name: 'Skip' }).click({ timeout: 15_000 })
+  await expect(page.getByText(/10 minutes · Wild/)).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click() // mood after
+  await page.getByRole('button', { name: /Rest now · 50 min of Power left today/ }).click()
+
+  // resting for 10 minutes: nothing starts, but it isn't "done for the day"
+  await expect(page.getByText(/Resting after your 10-minute run/)).toBeVisible()
+  await expect(page.getByText('50 Power minutes left today')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Start a break/ })).toHaveCount(0)
+
+  // when the rest is over, 50 minutes remain: 60 no longer fits, 45 does
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
+    localStorage.setItem('nd:progress', JSON.stringify({ ...p, powerRestUntil: Date.now() - 1 }))
+  })
+  await page.reload()
+  await expect(page.getByRole('button', { name: /Start a break/ })).toBeVisible()
+  await page.locator('.power-card').click()
+  await expect(page.locator('.pi-lengths button', { hasText: '60' })).toBeDisabled()
+  await expect(page.locator('.pi-lengths button', { hasText: '45' })).toBeEnabled()
+  expect(errors).toEqual([])
+})
+
+test('calm runs never spin the board', async ({ page }) => {
+  page.on('dialog', (d) => d.accept())
+  await setup(page)
+  await openIntro(page)
+  await page.locator('.pi-lengths button', { hasText: '10' }).click()
+  await page.locator('.pi-slider-labels button', { hasText: 'Calm' }).click()
+  await page.getByRole('button', { name: /Start 10 minutes/ }).click()
+  await expect(page.locator('.game-screen.power.mode-calm')).toBeVisible()
+  // at 60× the first normal spin would come at ~1.7 s; wait well past several
+  await page.waitForTimeout(5000)
+  expect(await page.locator('.spin-outer').getAttribute('style')).toContain('rotate(0deg)')
 })

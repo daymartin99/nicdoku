@@ -12,6 +12,8 @@ export type PowerStartMsg = {
   /** real ms offsets from start */
   spins: number[]
   stages: { name: string; at: number }[]
+  /** calm | normal | wild (calm has no spins, wild adds glitch haptics) */
+  mode?: string
 }
 
 /** Shown on the Watch face complication and the Watch idle screen. */

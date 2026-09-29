@@ -3,7 +3,7 @@
 
 import { effect } from '@preact/signals'
 import { isNative, native, type WatchStatus } from './bridge'
-import { progress, restingToday, inCooldown } from '../state/progress'
+import { progress, restingToday, inCooldown, powerWaiting } from '../state/progress'
 import { power } from '../power/state'
 import { allSolves, localDay } from '../db'
 import { streak } from '../stats/metrics'
@@ -16,6 +16,7 @@ function compute(): WatchStatus {
   const pr = progress.value
   if (p && !p.endedAt) return { state: 'power', streak: activeDays, label: 'Power Hour' }
   if (restingToday()) return { state: 'resting', streak: activeDays, label: 'Rest day' }
+  if (powerWaiting()) return { state: 'cooling', until: pr.powerRestUntil, streak: activeDays, label: 'Resting' }
   if (inCooldown()) return { state: 'cooling', until: pr.cooldownUntil, streak: activeDays, label: 'Next break' }
   return { state: 'open', streak: activeDays, label: 'Break open' }
 }

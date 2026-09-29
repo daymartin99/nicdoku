@@ -3,6 +3,7 @@ import { lsGet, lsSet, localDay } from '../db'
 import { COOLDOWN_MIN, SICK_COOLDOWN_MIN, SESSION_SIZE, sizeForLevel, GENERATOR_VERSION } from '../config'
 import type { Difficulty } from '../engine/types'
 import { native } from '../native/bridge'
+import { DAILY_POWER_MIN } from '../power/timeline'
 
 export type SessionResult = {
   level: number
@@ -42,6 +43,11 @@ export type Progress = {
   restDay: string | null
   /** local day she switched on "not feeling great": gentler rules for that day only */
   sickDay: string | null
+  /** Power minutes used on powerDay (60 a day; each run rests for as long as it lasted) */
+  powerDay: string | null
+  powerUsedMin: number
+  /** epoch ms: after a Power run, everything rests until then */
+  powerRestUntil: number
 }
 
 const fresh = (): Progress => ({
@@ -56,6 +62,9 @@ const fresh = (): Progress => ({
   salt: Math.random().toString(36).slice(2, 10),
   restDay: null,
   sickDay: null,
+  powerDay: null,
+  powerUsedMin: 0,
+  powerRestUntil: 0,
 })
 
 export const progress = signal<Progress>({ ...fresh(), ...lsGet('nd:progress', {}) })
@@ -142,9 +151,33 @@ export function inCooldown(now = Date.now()) {
   return progress.value.cooldownUntil > now
 }
 
-/** Power Hour is done for today: breaks, daily and Power Hour all rest until tomorrow. */
+/** Today's Power minutes are used up: breaks, daily and Power all rest until tomorrow. */
 export function restingToday(day = localDay()) {
   return progress.value.restDay === day
+}
+
+/** Resting after a Power run (a 10-minute run rests 10 minutes, and so on). */
+export function powerWaiting(now = Date.now()) {
+  return progress.value.powerRestUntil > now
+}
+
+/** Minutes of Power left today. */
+export function powerMinutesLeft(day = localDay()) {
+  const pr = progress.value
+  return Math.max(0, DAILY_POWER_MIN - (pr.powerDay === day ? pr.powerUsedMin : 0))
+}
+
+/** Record a finished Power run: rest for as long as it lasted; out of minutes → rest until tomorrow. */
+export function usePowerMinutes(minutes: number, day = localDay()) {
+  const pr = progress.value
+  const used = (pr.powerDay === day ? pr.powerUsedMin : 0) + minutes
+  const allUsed = used >= DAILY_POWER_MIN
+  patchProgress({
+    powerDay: day,
+    powerUsedMin: used,
+    powerRestUntil: allUsed ? 0 : Date.now() + minutes * 60_000,
+    restDay: allUsed ? day : pr.restDay,
+  })
 }
 
 /** "Not feeling great" is on for today (it switches itself off at midnight). */

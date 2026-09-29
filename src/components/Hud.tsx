@@ -9,6 +9,7 @@ import { formatTime } from '../stats/metrics'
 import { BackIcon, GearIcon, CloseIcon } from './Icons'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
+import { boardMode, powerPalette, powerPiece } from '../power/palette'
 
 export function Header({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const g = game.value!
@@ -39,7 +40,7 @@ export function Header({ onBack, onSettings }: { onBack: () => void; onSettings:
 /** `right` replaces the lives pill (Power Hour shows its combo there). */
 export function Tracker({ right }: { right?: ComponentChildren } = {}) {
   const g = game.value!
-  const palette = theme.value.palette
+  const palette = powerPalette(g.mode === 'power' ? boardMode.value : null, theme.value.palette)
   const solved = solvedRegions.value
   const n = g.puzzle.n
   const colourOf = assignColours(n, g.puzzle.regions, palette)
@@ -52,7 +53,7 @@ export function Tracker({ right }: { right?: ComponentChildren } = {}) {
             class={`trk${solved.has(r) ? ' on' : ''}`}
             style={{ '--c': palette[colourOf[r]] } as never}
           >
-            {solved.has(r) && <Piece art={pieceArt.value} />}
+            {solved.has(r) && <Piece art={powerPiece(g.mode === 'power' ? boardMode.value : null, pieceArt.value)} />}
           </span>
         ))}
       </div>

@@ -15,6 +15,12 @@ const MIN = 60_000
 export const BLOCK_MS = 5 * MIN
 export const BLOCKS = POWER_MS / BLOCK_MS // 12
 
+/** A run's chosen length (runs before 10/30/45/60 existed were all the full hour). */
+export const runLength = (run: PowerRun) => run.durationMs ?? POWER_MS
+/** Each run is split into 12 equal slices: 5 min of an hour, 50 s of a 10-minute run. */
+export const sliceMs = (run: PowerRun) => runLength(run) / BLOCKS
+export const runLengthMin = (run: PowerRun) => Math.round(runLength(run) / MIN)
+
 // ---------- mood lift ----------
 
 export const MOOD_MIN_PAIRS = 3
@@ -93,16 +99,16 @@ export function settlingMs(run: PowerRun): number | null {
 
 /** How long the hour actually ran (ms, capped at 60 min). */
 export function runDurationMs(run: PowerRun): number {
-  if (run.endedAt) return Math.max(0, Math.min(POWER_MS, run.endedAt - run.startedAt))
+  if (run.endedAt) return Math.max(0, Math.min(runLength(run), run.endedAt - run.startedAt))
   const last = run.solves[run.solves.length - 1]
-  return last ? Math.min(POWER_MS, last.at) : 0
+  return last ? Math.min(runLength(run), last.at) : 0
 }
 
 /** Longest stretch without leaving the app, and how often she switched away. Shown neutrally. */
 export function focusStats(run: PowerRun): { longestMs: number; switches: number; awayMs: number } {
   const dur = runDurationMs(run)
   return {
-    longestMs: Math.min(dur || POWER_MS, Math.max(0, run.longestFocusMs || 0)),
+    longestMs: Math.min(dur || runLength(run), Math.max(0, run.longestFocusMs || 0)),
     switches: run.switches || 0,
     awayMs: run.awayMs || 0,
   }
@@ -132,7 +138,7 @@ export function peakEnd(run: PowerRun): PeakEnd {
 /** Puzzles solved in each 5-minute block of the hour (12 numbers). */
 export function crescendo(run: PowerRun): number[] {
   const out = new Array<number>(BLOCKS).fill(0)
-  for (const s of run.solves) out[Math.min(BLOCKS - 1, Math.max(0, Math.floor(s.at / BLOCK_MS)))]++
+  for (const s of run.solves) out[Math.min(BLOCKS - 1, Math.max(0, Math.floor(s.at / sliceMs(run))))]++
   return out
 }
 
@@ -145,13 +151,13 @@ export const STEADY_BAND = 0.35
  */
 export function steadyBlocks(run: PowerRun): { steady: number; total: number } {
   const dur = runDurationMs(run)
-  const total = Math.max(0, Math.min(BLOCKS, Math.ceil(dur / BLOCK_MS)))
+  const total = Math.max(0, Math.min(BLOCKS, Math.ceil(dur / sliceMs(run))))
   const pace = (s: PowerRun['solves'][number]) => s.timeMs / (s.n * s.n)
   const mid = median(run.solves.map(pace))
   if (mid === null || mid <= 0) return { steady: 0, total }
   let steady = 0
   for (let b = 0; b < total; b++) {
-    const inBlock = run.solves.filter((s) => Math.min(BLOCKS - 1, Math.floor(s.at / BLOCK_MS)) === b)
+    const inBlock = run.solves.filter((s) => Math.min(BLOCKS - 1, Math.floor(s.at / sliceMs(run))) === b)
     const m = median(inBlock.map(pace))
     if (m !== null && Math.abs(m - mid) / mid <= STEADY_BAND) steady++
   }
@@ -179,7 +185,9 @@ export function vsLastTime(runs: PowerRun[]): { lines: string[]; neutral: string
   const sorted = [...runs].sort((a, b) => a.startedAt - b.startedAt)
   if (sorted.length < 2) return null
   const cur = sorted[sorted.length - 1]
-  const prev = sorted[sorted.length - 2]
+  // only fair against a run of the same length
+  const prev = [...sorted.slice(0, -1)].reverse().find((r) => runLength(r) === runLength(cur))
+  if (!prev) return null
   const lines: string[] = []
   const dp = cur.solves.length - prev.solves.length
   if (dp > 0) lines.push(`+${dp} puzzle${dp === 1 ? '' : 's'} vs last time`)
@@ -187,7 +195,7 @@ export function vsLastTime(runs: PowerRun[]): { lines: string[]; neutral: string
   if (ds > 0) lines.push(`+${ds.toLocaleString('en-GB')} points vs last time`)
   const dc = cur.bestCombo - prev.bestCombo
   if (dc > 0) lines.push(`Longer combo than last time (${cur.bestCombo} vs ${prev.bestCombo})`)
-  return { lines, neutral: lines.length ? null : 'Every hour is different. This one is in the books.' }
+  return { lines, neutral: lines.length ? null : 'Every run is different. This one is in the books.' }
 }
 
 // ---------- real-life framing ----------

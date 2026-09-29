@@ -22,7 +22,9 @@ import {
   trend,
 } from '../stats/metrics'
 import {
-  BLOCK_MS,
+  runLength,
+  runLengthMin,
+  sliceMs,
   crescendo,
   focusStats,
   moodLift,
@@ -430,14 +432,16 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
     if (!runs.length) return null
     const sorted = [...runs].sort((a, b) => b.startedAt - a.startedAt)
     const latest = sorted[0]
-    const prev = sorted[1]
+    // compare like with like: the previous run of the same length
+    const prev = sorted.slice(1).find((r) => runLength(r) === runLength(latest))
+    const sameLength = runs.filter((r) => runLength(r) === runLength(latest))
     const settle = settlingMs(latest)
     const prevSettle = prev ? settlingMs(prev) : null
     return {
       sorted,
       latest,
       blocks: crescendo(latest),
-      bests: powerBests(runs),
+      bests: powerBests(sameLength),
       vs: vsLastTime(runs),
       settle,
       settleQuicker: settle !== null && prevSettle !== null && settle < prevSettle,
@@ -448,26 +452,29 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
     }
   }, [runs, pairs])
 
-  if (!d) return <div class="card st-empty fade-in">Your first Power Hour will show up here ⚡</div>
+  if (!d) return <div class="card st-empty fade-in">Your first Power run will show up here ⚡</div>
   const { latest, blocks, bests, vs, focus, pe, steady } = d
+  const slice = sliceMs(latest) / MIN
+  const m = (x: number) => (Number.isInteger(x) ? `${x}` : x.toFixed(1))
   const bars = blocks.map((v, i) => ({
-    label: `${(i * BLOCK_MS) / MIN}–${((i + 1) * BLOCK_MS) / MIN} min`,
+    label: `${m(i * slice)}–${m((i + 1) * slice)} min`,
     value: v,
-    tick: i % 3 === 0 ? `${(i * BLOCK_MS) / MIN}m` : undefined,
+    tick: i % 3 === 0 ? `${m(i * slice)}m` : undefined,
   }))
+  const lenLabel = `${runLengthMin(latest)}-min`
 
   return (
     <div class="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div class="card">
         <div class="chart-caption">
-          <h3>Your latest hour</h3>
+          <h3>Your latest {lenLabel} run</h3>
           <span class="label">{shortDate(latest.day)}</span>
         </div>
         <BarChart
           data={bars}
           colors={bars.map((_, i) => warmth(i, bars.length))}
           format={(v) => `${v} puzzle${v === 1 ? '' : 's'}`}
-          ariaLabel="Puzzles solved in each 5-minute block of your latest Power Hour"
+          ariaLabel="Puzzles solved in each twelfth of your latest Power run"
         />
         {vs && (
           <p class={`label chart-legend${vs.lines.length ? ' st-good' : ''}`}>
@@ -477,7 +484,7 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
       </div>
 
       <div class="st-tiles three">
-        <Tile label="Most puzzles" value={String(bests.puzzles)} />
+        <Tile label={`Most puzzles (${lenLabel})`} value={String(bests.puzzles)} />
         <Tile label="Top score" value={bests.score.toLocaleString('en-GB')} />
         <Tile label="Longest combo" value={String(bests.combo)} />
       </div>
@@ -508,8 +515,8 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
       {steady.total > 0 && (
         <Insight
           title="Steady-pace blocks"
-          value={`${steady.steady} of ${steady.total} five-minute blocks`}
-          sub="Solved at least one, close to your usual pace for the hour"
+          value={`${steady.steady} of ${steady.total} blocks`}
+          sub="Blocks are twelfths of the run. Solved at least one, close to your usual pace for that run"
           info="Being absorbed in something challenging but doable is what psychologists call flow (Csikszentmihalyi). We can't measure flow, but a steady pace is one outward sign. Pace here is time per square, within about a third of your median for that hour."
         />
       )}
@@ -524,12 +531,13 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
       )}
 
       <div>
-        <div class="st-day">All Power Hours</div>
+        <div class="st-day">All Power runs</div>
         <div class="card" style={{ padding: '4px 16px', marginTop: 6 }}>
           {d.sorted.map((r) => (
             <div class="st-row" key={r.id}>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <strong style={{ minWidth: 52 }}>{shortDate(r.day)}</strong>
+                <span class="st-tag">{runLengthMin(r)} min{r.mode && r.mode !== 'normal' ? ` · ${r.mode}` : ''}</span>
                 <span>{r.solves.length} puzzle{r.solves.length === 1 ? '' : 's'}</span>
                 {r.bestCombo >= 2 && <span class="st-tag">×{r.bestCombo} combo</span>}
                 {r.bossDone && (
