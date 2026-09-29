@@ -64,8 +64,8 @@ export function PowerHeader() {
   const frac = real / runDuration(r)
   const R = 25, C = 2 * Math.PI * R
   const onBack = () => {
-    const mins = runMinutes(r)
-    if (confirm(`End this ${mins}-minute run now? It still counts, and everything rests for ${mins} minutes.`)) void endPower('early')
+    const played = Math.max(1, Math.ceil(real / 60_000))
+    if (confirm(`End this ${runMinutes(r)}-minute run now? You've played ${played} min, so everything rests for ${played} min.`)) void endPower('early')
   }
   return (
     <div class="topbar game-top power-top">

@@ -108,7 +108,8 @@ export function PowerIntroScreen() {
         </div>
         <p class="pi-note">
           {left < 60 ? `${left} Power minutes left today. ` : ''}
-          Afterwards everything rests for {minutes} minutes{minutes === left ? ', then until tomorrow' : ''}.
+          Afterwards everything rests for {minutes} minutes (or as long as you played, if you stop early)
+          {minutes === left ? ', then until tomorrow' : ''}.
         </p>
 
         <span class="label">How intense?</span>

@@ -179,3 +179,38 @@ test('calm runs never spin the board', async ({ page }) => {
   await page.waitForTimeout(5000)
   expect(await page.locator('.spin-outer').getAttribute('style')).toContain('rotate(0deg)')
 })
+
+test('ending early rests only for the minutes actually played', async ({ page }) => {
+  test.setTimeout(90_000)
+  page.on('dialog', (d) => d.accept()) // "End this run now?"
+  await setup(page)
+  await openIntro(page)
+  await page.locator('.pi-lengths button', { hasText: '60' }).click()
+  await page.getByRole('button', { name: /Start 60 minutes/ }).click()
+  await expect(page.locator('.game-screen.power')).toBeVisible()
+  await page.waitForTimeout(3000) // ≈3 minutes at 60×
+  await page.getByRole('button', { name: 'End Power Hour' }).click()
+  await expect(page.locator('.breathe')).toBeVisible({ timeout: 8000 })
+
+  const pr = await page.evaluate(() => JSON.parse(localStorage.getItem('nd:progress') || '{}'))
+  // a few minutes used, not the full 60, and not done for the day
+  expect(pr.powerUsedMin).toBeGreaterThanOrEqual(1)
+  expect(pr.powerUsedMin).toBeLessThanOrEqual(6)
+  expect(pr.restDay ?? null).not.toBe(new Date().toISOString().slice(0, 10))
+  // the rest matches the minutes played
+  const restMin = (pr.powerRestUntil - Date.now()) / 60_000
+  expect(restMin).toBeGreaterThan(pr.powerUsedMin - 1)
+  expect(restMin).toBeLessThanOrEqual(pr.powerUsedMin)
+
+  // after the rest, 45 still fits (and 60 doesn't)
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
+    localStorage.setItem('nd:progress', JSON.stringify({ ...p, powerRestUntil: Date.now() - 1 }))
+    const r = JSON.parse(localStorage.getItem('nd:power') || '{}')
+    localStorage.setItem('nd:power', JSON.stringify({ ...r, seen: true }))
+  })
+  await page.goto('/')
+  await page.locator('.power-card').click()
+  await expect(page.locator('.pi-lengths button', { hasText: '45' })).toBeEnabled()
+  await expect(page.locator('.pi-lengths button', { hasText: '60' })).toBeDisabled()
+})

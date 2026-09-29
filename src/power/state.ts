@@ -273,7 +273,9 @@ export async function endPower(reason: 'time' | 'early') {
   clearInterval(ticker)
   freezeGame()
   // rest for as long as the run was chosen for; once today's 60 minutes are used, rest until tomorrow
-  usePowerMinutes(runMinutes(r), r.day)
+  // a full run rests (and uses up) its chosen length; ending early counts the minutes actually played
+  const played = reason === 'early' ? Math.max(1, Math.ceil(powerElapsed(ended) / 60_000)) : runMinutes(r)
+  usePowerMinutes(Math.min(played, runMinutes(r)), r.day)
   powerPhase.value = 'time'
   // the Watch's full series is more complete than what streamed live (screen-off gaps etc.)
   stopHr?.()
