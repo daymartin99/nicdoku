@@ -238,10 +238,10 @@ export function validateFamily(v: unknown): FamilyData | null {
   return { members, specials }
 }
 
-const FAMILY_FILE_ERR = "That isn't a Nicdoku family file. Ask David to send it again."
+const FAMILY_FILE_ERR = "That isn't a Nicdoku family file. Ask whoever sent it to send it again."
 const FAMILY_CODE_PREFIX = 'NICDOKU1:'
 
-/** Text code David can message her: prefix + base64 of the family JSON (UTF-8, emoji-safe). */
+/** Text code someone can message the player: prefix + base64 of the family JSON (UTF-8, emoji-safe). */
 export function encodeFamilyCode(data: FamilyData): string {
   const bytes = new TextEncoder().encode(JSON.stringify(data))
   let bin = ''
@@ -250,25 +250,47 @@ export function encodeFamilyCode(data: FamilyData): string {
 }
 
 /** Accepts a NICDOKU1: code or pasted family.json text. Whitespace/line breaks from messaging apps are ignored. */
+function decodeB64Json(b64: string): unknown {
+  const bin = atob(b64)
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+  return JSON.parse(new TextDecoder().decode(bytes))
+}
+
+/**
+ * Accepts a NICDOKU1: code or pasted family.json text. Forgiving about what comes with it:
+ * spaces and line breaks from messaging apps, a lower-case prefix, and stray characters
+ * before or after the code (e.g. a line number picked up when copying).
+ */
 export function parseFamilyCode(text: string): FamilyData | null {
   const t = text.trim()
   try {
     if (t.startsWith('{')) return validateFamily(JSON.parse(t))
-    const at = t.indexOf(FAMILY_CODE_PREFIX)
-    if (at < 0) return null
-    const b64 = t.slice(at + FAMILY_CODE_PREFIX.length).replace(/[^A-Za-z0-9+/=]/g, '')
-    const bin = atob(b64)
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
-    return validateFamily(JSON.parse(new TextDecoder().decode(bytes)))
   } catch {
-    return null
+    /* not JSON; try as a code */
   }
+  const at = t.toUpperCase().indexOf(FAMILY_CODE_PREFIX)
+  if (at < 0) return null
+  const rest = t.slice(at + FAMILY_CODE_PREFIX.length)
+  // the code itself: base64 characters (spaces/line breaks allowed) up to any = padding
+  const m = /^[\sA-Za-z0-9+/]*=*/.exec(rest)
+  let b64 = (m ? m[0] : rest).replace(/[^A-Za-z0-9+/=]/g, '')
+  // anything stuck on the end without padding: trim a few characters until it reads
+  for (let trim = 0; trim <= 8 && b64.length > 8; trim++) {
+    try {
+      const data = validateFamily(decodeB64Json(b64))
+      if (data) return data
+    } catch {
+      /* try one character shorter */
+    }
+    b64 = b64.slice(0, -1)
+  }
+  return null
 }
 
 export async function importFamilyCode(text: string): Promise<FamilyData> {
   const data = parseFamilyCode(text)
   if (!data || (!data.members.length && !data.specials.length)) {
-    throw new Error("That code didn't work. Copy the whole message from David and try again.")
+    throw new Error("That code didn't work. Copy the whole code, starting NICDOKU1:, and try again.")
   }
   await setFamily(data)
   return data

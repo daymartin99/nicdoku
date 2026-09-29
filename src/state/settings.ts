@@ -1,5 +1,6 @@
 import { signal, effect } from '@preact/signals'
 import { lsGet, lsSet, localDay } from '../db'
+import { OWNER_NAME } from '../config'
 
 /** a theme she picked by hand; it only applies on the day she picked it */
 export type ThemeOverride = { id: string; day: string }
@@ -26,7 +27,7 @@ export type Settings = {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  name: 'Nicola',
+  name: OWNER_NAME,
   inputMode: 'meowdoku',
   autoX: false,
   showTimer: true,

@@ -13,8 +13,11 @@ import type { FamilyData, FamilyMember, Fact, ResolvedTheme, SpecialDate, Theme 
 import { PIECES, DEFAULT_PIECE } from './pieces'
 import { PALETTES } from './palettes'
 
-/** Nicola – her own birthday week gets the royal treatment. */
-export const HER_NAME = 'Nicola'
+/** The player's own name (from Settings): her birthday week gets the royal treatment. */
+let ownerName = ''
+export function setOwnerName(name: string) {
+  ownerName = name.trim().toLowerCase()
+}
 
 // ---------------------------------------------------------------------------
 // Date helpers (all dates are local calendar days; maths done on UTC day numbers
@@ -1021,7 +1024,7 @@ type PersonalEvent =
   | { kind: 'birthday'; n: number; days: number; member: FamilyMember; age: number; isHer: boolean }
   | { kind: 'special'; n: number; days: number; special: SpecialDate }
 
-const isHer = (m: FamilyMember) => m.name.trim().toLowerCase() === HER_NAME.toLowerCase()
+const isHer = (m: FamilyMember) => !!ownerName && m.name.trim().toLowerCase() === ownerName
 
 /** next occurrence (on or after `from`) of a month/day; 29 Feb falls back to 28 Feb */
 function nextOccurrence(month: number, day: number, from: number): { n: number; y: number } {

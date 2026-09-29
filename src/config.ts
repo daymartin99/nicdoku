@@ -8,7 +8,14 @@ export const LIVES = 3
 export const JUST_ONE_MORE = 1
 export const DOUBLE_TAP_MS = 420
 export const APP_NAME = 'Nicdoku'
-export const OWNER_NAME = 'Nicola'
+/**
+ * Personal names are set per deployment (Vercel env / a local .env.local), never in the public code:
+ *   VITE_OWNER_NAME = who the app is for (greeting, their own birthday week)
+ *   VITE_MAKER_NAME = who made it for them ("Made by …")
+ */
+const env = import.meta.env as Record<string, string | undefined>
+export const OWNER_NAME = env.VITE_OWNER_NAME?.trim() ?? ''
+export const MAKER_NAME = env.VITE_MAKER_NAME?.trim() ?? ''
 export const GENERATOR_VERSION = 'v1'
 
 /** Board size grows with level, roughly like Meowdoku (she was on 9×9 at level 134). */

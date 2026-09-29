@@ -24,7 +24,7 @@ const CONFETTI_KEY = 'nd:bigdayConfetti'
 function greeting(name: string) {
   const h = new Date().getHours()
   const part = h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'
-  return `${part}, ${name}`
+  return name ? `${part}, ${name}` : `Good ${part.toLowerCase()}`
 }
 
 /** Re-renders every `ms`, and once more exactly at `wakeAt` (if it's in the future). */

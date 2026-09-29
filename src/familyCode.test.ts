@@ -38,3 +38,21 @@ describe('next family date line', () => {
     expect(nextPersonalLine(new Date(2026, 8, 28, 12), null)).toBeNull()
   })
 })
+
+describe('forgiving family-code paste', () => {
+  it('ignores a copied line number before and after the code', () => {
+    const code = encodeFamilyCode(fam)
+    expect(parseFamilyCode(`1\t${code}\n2`)).toEqual(fam)
+    expect(parseFamilyCode(`1  ${code}  2  `)).toEqual(fam)
+  })
+  it('copes with junk stuck to the end even without padding', () => {
+    const tiny = { members: [{ name: 'Al', birthday: '2014-01-28' }], specials: [] }
+    const code = encodeFamilyCode(tiny)
+    expect(parseFamilyCode(code.replace(/=+$/, '') + 'x')).toEqual(tiny)
+  })
+  it('accepts a lower-case prefix and a code wrapped over many lines', () => {
+    const code = encodeFamilyCode(fam)
+    const wrapped = code.replace('NICDOKU1:', 'nicdoku1: ').replace(/(.{40})/g, '$1\n')
+    expect(parseFamilyCode(wrapped)).toEqual(fam)
+  })
+})

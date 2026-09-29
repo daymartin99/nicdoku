@@ -1,6 +1,6 @@
 import { signal, computed, effect } from '@preact/signals'
 import { kvGet, localDay } from '../db'
-import { resolveTheme, upcoming } from '../themes/calendar'
+import { resolveTheme, upcoming, setOwnerName } from '../themes/calendar'
 import type { FamilyData, PieceArt, ResolvedTheme } from '../themes/types'
 import { settings } from './settings'
 
@@ -17,7 +17,10 @@ export async function loadFamily() {
 }
 
 /** what the calendar alone says today (no hand-picked override) */
-export const calendarResolved = computed<ResolvedTheme>(() => resolveTheme(today.value, family.value, null))
+export const calendarResolved = computed<ResolvedTheme>(() => {
+  setOwnerName(settings.value.name)
+  return resolveTheme(today.value, family.value, null)
+})
 
 /** true when a birthday/special owns today, so a hand-picked theme can't hide it */
 export const overrideLocked = computed(() => calendarResolved.value.isBigDay)
@@ -37,7 +40,7 @@ export const resolved = computed<ResolvedTheme>(() => {
 
 export const theme = computed(() => resolved.value.theme)
 
-/** Next family birthday / special date within 6 weeks, e.g. "🎂 David's birthday in 28 days". */
+/** Next family birthday / special date within 6 weeks, e.g. "🎂 Sam's birthday in 28 days". */
 export function nextPersonalLine(from: Date, fam: FamilyData | null, days = 42): string | null {
   if (!fam) return null
   const next = upcoming(from, fam, days).find((u) => u.themeId.startsWith('birthday') || u.themeId === 'special')

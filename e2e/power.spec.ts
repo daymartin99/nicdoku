@@ -10,7 +10,7 @@ async function setup(page: Page) {
   await page.goto('/')
   await page.evaluate((scale) => {
     localStorage.clear()
-    localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Nicola' }))
+    localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Jo' }))
     localStorage.setItem('nd:installHintDismissed', '1')
     localStorage.setItem('nd:progress', JSON.stringify({ level: 135, salt: 'e2e' }))
     localStorage.setItem('nd:debugPowerScale', String(scale))

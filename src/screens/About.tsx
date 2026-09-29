@@ -1,4 +1,5 @@
 import { go } from '../router'
+import { MAKER_NAME, OWNER_NAME } from '../config'
 import { BackIcon } from '../components/Icons'
 import './Settings.css'
 
@@ -89,8 +90,8 @@ export function AboutScreen() {
       <section class="card">
         <h2>What this is</h2>
         <p>
-          Nicdoku is a little colour puzzle made by David, just for Nicola. There are no ads, no tracking and no
-          accounts. Everything, from your scores to your photos and family dates, stays on your phone.
+          Nicdoku is a little colour puzzle{MAKER_NAME ? ` made by ${MAKER_NAME}` : ''}{OWNER_NAME ? `, just for ${OWNER_NAME}` : ''}. There are no ads, no
+          tracking and no accounts. Everything, from your scores to your photos and family dates, stays on your phone.
         </p>
       </section>
 

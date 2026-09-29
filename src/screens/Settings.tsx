@@ -354,7 +354,7 @@ export function SettingsScreen() {
 
 // ------------------------------------------------------------------ family
 
-/** Confirmation that proves it worked, e.g. "8 birthdays and 1 special date loaded. Next: 🎂 David's birthday in 27 days" */
+/** Confirmation that proves it worked, e.g. "8 birthdays and 1 special date loaded. Next: 🎂 Sam's birthday in 27 days" */
 function familyLoadedMsg(d: FamilyData): string {
   const b = `${d.members.length} birthday${d.members.length === 1 ? '' : 's'}`
   const sp = d.specials.length ? ` and ${d.specials.length} special date${d.specials.length === 1 ? '' : 's'}` : ''
@@ -547,7 +547,7 @@ function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
           {pasting && (
             <div class="set-stack">
               <label class="field">
-                <span class="label">Paste the code David sent you</span>
+                <span class="label">Paste the code you were sent (it starts NICDOKU1:)</span>
                 <textarea
                   class="text-input code-input"
                   rows={4}

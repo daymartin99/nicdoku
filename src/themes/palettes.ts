@@ -176,7 +176,7 @@ export const PALETTES: Record<string, string[]> = {
     '#9E9E9E', // mid grey
   ],
 
-  /** Nicola's birthday week only – royal and a bit extra. */
+  /** The player's own birthday week only – royal and a bit extra. */
   queen: [
     '#7B3FA0', // royal purple
     '#D4AF37', // gold

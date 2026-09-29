@@ -18,7 +18,7 @@ async function seed({ level = 135, onboarded = true, extra = {}, progress = {}, 
   await page.evaluate(
     async ({ level, onboarded, extra, progress, solves, family }) => {
       localStorage.clear()
-      localStorage.setItem('nd:settings', JSON.stringify({ onboarded, name: 'Nicola', ...extra }))
+      localStorage.setItem('nd:settings', JSON.stringify({ onboarded, name: 'Jo', ...extra }))
       localStorage.setItem('nd:installHintDismissed', '1')
       localStorage.setItem('nd:progress', JSON.stringify({ level, totalScore: 48210, bestSessionScore: 9120, salt: 'shoot', ...progress }))
       await new Promise((res) => {
@@ -59,7 +59,7 @@ async function seed({ level = 135, onboarded = true, extra = {}, progress = {}, 
         const t = new Date()
         const md = `${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
         const ftx = req.result.transaction('kv', 'readwrite')
-        ftx.objectStore('kv').put({ members: [{ name: 'Nicola', birthday: `1985-${md}` }], specials: [] }, 'family')
+        ftx.objectStore('kv').put({ members: [{ name: 'Jo', birthday: `1990-${md}` }], specials: [] }, 'family')
         await new Promise((res) => (ftx.oncomplete = res))
       }
     },

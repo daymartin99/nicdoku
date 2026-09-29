@@ -5,7 +5,7 @@ type Saved = { puzzle: { n: number; solution: number[] }; marks: number[]; done:
 async function skipOnboarding(page: Page, level = 135) {
   await page.goto('/')
   await page.evaluate((lvl) => {
-    localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Nicola' }))
+    localStorage.setItem('nd:settings', JSON.stringify({ onboarded: true, name: 'Jo' }))
     localStorage.setItem('nd:installHintDismissed', '1')
     const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
     localStorage.setItem('nd:progress', JSON.stringify({ ...p, level: lvl }))

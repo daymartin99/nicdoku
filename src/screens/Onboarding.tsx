@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import { go } from '../router'
 import { updateSettings, settings } from '../state/settings'
 import { setStartLevel } from '../flow'
+import { MAKER_NAME } from '../config'
 import { pieceArt } from '../state/theme'
 import { Piece } from '../components/Piece'
 
@@ -21,12 +22,12 @@ export function OnboardingScreen() {
           <div class="ob-art">
             <Piece art={pieceArt.value} />
           </div>
-          <h1>Hi {settings.value.name} 👋</h1>
+          <h1>{settings.value.name ? `Hi ${settings.value.name} 👋` : 'Hi 👋'}</h1>
           <p>
             Your own colour puzzle. <b>No ads, ever.</b> No pop-ups, no fake timers, nothing trying to sell you
             anything. Just the game.
           </p>
-          <p class="muted">Made by David, just for you.</p>
+          <p class="muted">{MAKER_NAME ? `Made by ${MAKER_NAME}, just for you.` : 'Made with care, just for you.'}</p>
           <button class="btn" onClick={() => setStep(1)}>
             Let's go
           </button>

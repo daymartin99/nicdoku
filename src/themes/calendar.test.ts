@@ -8,7 +8,11 @@ import {
   resolveTheme,
   themeById,
   upcoming,
+  setOwnerName,
 } from './calendar'
+
+// the player is whoever matches the name in Settings
+setOwnerName('Jo')
 import { PALETTES } from './palettes'
 import { PIECES } from './pieces'
 import type { FamilyData } from './types'
@@ -23,7 +27,7 @@ const FAMILY: FamilyData = {
     { name: 'Robin', birthday: '2019-01-04', emoji: '🌈' },
     { name: 'Sam', birthday: '2015-05-12' },
     { name: 'Kit', birthday: '2010-05-17' },
-    { name: 'Nicola', birthday: '1990-11-24' },
+    { name: 'Jo', birthday: '1990-11-24' },
   ],
   specials: [{ date: '12-31', title: 'Two reasons to celebrate', message: 'Test special message ❤️', emoji: '❤️' }],
 }
@@ -201,7 +205,7 @@ describe('family birthdays', () => {
     expect(ny.theme.tagline).toBe('Robin turns 8 in 3 days 🎂')
   })
 
-  it("gives Nicola's week the Birthday Queen treatment", () => {
+  it("gives the owner's own week the Birthday Queen treatment", () => {
     const r = resolveTheme(d('2026-11-21'), FAMILY)
     expect(r.theme.id).toBe('birthday-queen')
     expect(r.theme.palette).toEqual(PALETTES.queen)
@@ -209,7 +213,7 @@ describe('family birthdays', () => {
     expect(r.theme.tagline).toContain('3 days to go')
     const day = resolveTheme(d('2026-11-24'), FAMILY)
     expect(day.isBigDay).toBe(true)
-    expect(day.theme.tagline).toContain('Happy birthday, Nicola!')
+    expect(day.theme.tagline).toContain('Happy birthday, Jo!')
   })
 
   it('no family data means no personal themes', () => {
