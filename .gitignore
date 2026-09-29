@@ -33,3 +33,7 @@ native/Nicdoku.xcodeproj
 native/.tools
 native/build
 *.p8
+
+# review screenshots can show family details; keep them local
+docs/review/**/*.png
+docs/review/*.png

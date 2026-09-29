@@ -28,6 +28,10 @@ export type PowerSolve = {
   combo: number
   stage: Stage
   boss: boolean
+  /** ms from the puzzle appearing to her first tap */
+  firstTapMs?: number
+  /** each correct piece: ms into the puzzle, colour shown, placed by a hint */
+  picks?: { t: number; c: string; h?: boolean }[]
 }
 
 export type PowerRun = {
@@ -230,6 +234,7 @@ powerHooks.onSolved = (info: PowerSolveInfo) => {
   const solve: PowerSolve = {
     at: ms, n: info.puzzle.n, difficulty: info.puzzle.difficulty, timeMs: info.timeMs,
     clean: info.clean, score, combo, stage, boss,
+    firstTapMs: info.firstTapMs, picks: info.picks,
   }
   const best = combo > r.bestCombo
   save({

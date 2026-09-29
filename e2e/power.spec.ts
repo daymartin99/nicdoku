@@ -214,3 +214,54 @@ test('ending early rests only for the minutes actually played', async ({ page })
   await expect(page.locator('.pi-lengths button', { hasText: '45' })).toBeEnabled()
   await expect(page.locator('.pi-lengths button', { hasText: '60' })).toBeDisabled()
 })
+
+test('records: two 5-min runs → standing, story and a record book with colours', async ({ page }) => {
+  test.setTimeout(360_000)
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  page.on('dialog', (d) => d.accept())
+  await setup(page)
+  // 5× here: a 5-minute run lasts 60 s and the first spin comes at 10 s, so scripted taps never land mid-turn
+  await page.evaluate(() => localStorage.setItem('nd:debugPowerScale', '5'))
+  await page.reload()
+
+  async function fiveMinuteRun() {
+    await openIntro(page)
+    await page.locator('.pi-lengths button', { hasText: /^5/ }).first().click()
+    await page.getByRole('button', { name: /Start 5 minutes/ }).click()
+    await expect(page.locator('.game-screen.power')).toBeVisible()
+    await solve(page) // at least one puzzle, with every piece timed
+    await expect
+      .poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('nd:power') || '{}'))).solves?.length ?? 0, { timeout: 5000 })
+      .toBeGreaterThan(0)
+    await expect(page.locator('.time-slam')).toBeVisible({ timeout: 75_000 })
+    await expect(page.locator('.breathe')).toBeVisible({ timeout: 6000 })
+    await page.getByRole('button', { name: 'Skip' }).click({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /Power run done/ })).toBeVisible()
+  }
+
+  await fiveMinuteRun()
+  await expect(page.locator('.pd-records')).toContainText('Your first 5-min Normal run')
+  await expect(page.locator('.pd-story-row').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Skip' }).click() // mood
+  await page.locator('.power-done .btn').click()
+  // skip the 5-minute rest
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('nd:progress') || '{}')
+    localStorage.setItem('nd:progress', JSON.stringify({ ...p, powerRestUntil: Date.now() - 1 }))
+  })
+  await page.goto('/')
+
+  await fiveMinuteRun()
+  await expect(page.locator('.pd-standing')).toContainText(/of 2 in 5-min Normal/)
+  await page.getByRole('button', { name: 'Skip' }).click()
+  await page.locator('.power-done .btn').click()
+
+  // the record book in Stats
+  await page.getByRole('button', { name: /Stats/ }).first().click()
+  await page.getByRole('tab', { name: /Power/ }).click()
+  await expect(page.getByRole('heading', { name: '5-min Normal records' })).toBeVisible()
+  await expect(page.locator('.rt-row', { hasText: 'Quickest 1st correct piece' })).toBeVisible()
+  await expect(page.locator('.rt-group', { hasText: 'Fastest to each colour' }).locator('.rt-row').first()).toBeVisible()
+  expect(errors).toEqual([])
+})

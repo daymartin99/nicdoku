@@ -2,7 +2,7 @@ import { useRef, useState } from 'preact/hooks'
 import { DOUBLE_TAP_MS } from '../config'
 import { M_EMPTY, M_PIECE, M_WRONG, M_X } from '../engine/hints'
 import {
-  game, activeHint, lastEvent, beginGesture, setCross, setCrossMany, placePiece, removePiece,
+  game, activeHint, lastEvent, beginGesture, setCross, setCrossMany, placePiece, removePiece, colourHooks,
 } from '../state/game'
 import { settings } from '../state/settings'
 import { theme, pieceArt } from '../state/theme'
@@ -10,7 +10,7 @@ import { unlockAudio, feedback } from '../feedback'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
 import { unspinPoint } from '../power/spin'
-import { boardMode, powerPalette, powerPiece } from '../power/palette'
+import { boardMode, livePalette, powerPiece } from '../power/palette'
 
 const X_PATH = 'M4.7 4.7l14.6 14.6M19.3 4.7 4.7 19.3'
 
@@ -51,8 +51,10 @@ export function Board() {
   const [pressed, setPressed] = useState(-1)
   if (!g) return null
   const { n, regions } = g.puzzle
-  const palette = powerPalette(g.mode === 'power' ? boardMode.value : null, theme.value.palette)
+  const palette = livePalette(g.mode === 'power', theme.value.palette)
   const colourOf = assignColours(n, regions, palette)
+  // lets the game note which colour each piece showed when it was found (for colour records)
+  colourHooks.colourAt = (cell) => palette[colourOf[regions[cell]]]
   const hint = activeHint.value
   const focus = new Set(hint?.focus ?? [])
   const clearCells = new Set(hint?.apply.clear ?? [])

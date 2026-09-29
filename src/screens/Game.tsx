@@ -14,7 +14,7 @@ import { BulbIcon, WandIcon, BroomIcon } from '../components/ToolIcons'
 import { UndoIcon, PencilIcon, ResetIcon, CloseIcon } from '../components/Icons'
 import { PowerDriver, PowerHeader, ComboPill, StageBar, Burst, TimeSlam, Breathe, powerStyle, stageClass } from '../power/PowerHud'
 import { powerPhase } from '../power/state'
-import { spin } from '../power/spin'
+import { spin, swapPulse } from '../power/spin'
 import '../power/power.css'
 
 export function GameScreen() {
@@ -106,8 +106,14 @@ export function GameScreen() {
       <div class="board-wrap">
         {isPower ? (
           <div class="spin-outer" style={{ transform: `rotate(${sp.deg}deg) scaleX(${sp.mirror ? -1 : 1})` }}>
-            <div key={sp.pulse?.t ?? 0} class={`spin-inner${sp.pulse ? ` pulse-${sp.pulse.kind}` : ''}`}>
-              <Board />
+            <div
+              key={sp.pulse?.t ?? 0}
+              class={`spin-inner${sp.pulse ? ` pulse-${sp.pulse.kind}` : ''}`}
+            >
+              {/* own wrapper so a swap glitch and a spin can run at the same time */}
+              <div class={`swap-wrap${Date.now() - swapPulse.value < 600 ? ' swap-glitch' : ''}`}>
+                <Board />
+              </div>
             </div>
           </div>
         ) : (

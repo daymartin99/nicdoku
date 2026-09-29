@@ -3,9 +3,9 @@
    ===================================================================== */
 .pi-title { margin: 2px 0 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }
 .pi-picks { display: flex; flex-direction: column; gap: 10px; }
-.pi-lengths { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pi-lengths { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .pi-lengths button {
-  min-height: 60px; border-radius: 16px; background: var(--card-soft); font-size: 22px; font-weight: 700; color: var(--ink);
+  min-height: 60px; border-radius: 16px; background: var(--card-soft); font-size: 20px; font-weight: 700; color: var(--ink);
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
   box-shadow: inset 0 0 0 2px var(--line); transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
 }
@@ -203,3 +203,43 @@
 .mode-calm .stage-seg-surge i { background: #7cc493; }
 .mode-calm .stage-seg-crescendo i { background: #5fae7f; }
 .game-screen.power.mode-calm .board-card { box-shadow: 0 0 0 1px rgba(124, 196, 147, 0.4), var(--shadow-lg); }
+
+/* wild colour swap: colours flow to their new places under a quick slice-glitch
+   (two shifts in 0.45 s, no brightness flash) */
+.game-screen.power.mode-wild .cell { transition: background-color 0.45s steps(3, end), filter 0.2s, opacity 0.2s, transform 0.12s; }
+.swap-glitch { animation: swap-glitch 0.45s steps(1, end) both; }
+@keyframes swap-glitch {
+  0%, 100% { transform: none; clip-path: none; }
+  20% { transform: translateX(-8px) skewX(6deg); clip-path: inset(0 0 55% 0); }
+  55% { transform: translateX(8px) skewX(-6deg); clip-path: inset(45% 0 0 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .swap-glitch { animation: none !important; }
+  .game-screen.power.mode-wild .cell { transition: none; }
+}
+
+.swap-wrap { display: grid; }
+
+/* ---- results: records + story ---- */
+.pd-records b, .pd-story > b { font-size: 18px; color: var(--ink-strong); }
+.pd-records.first { background: linear-gradient(160deg, #fff, #fff6dd); }
+.pd-records p { margin: 6px 0 0; line-height: 1.4; font-weight: 400; }
+.pd-rec-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pd-rec-list li { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.pd-rec-icon { width: 22px; text-align: center; }
+.pd-rec-list.week .pd-rec-icon { color: var(--gold); }
+.pd-rec-label { flex: 1; color: var(--ink-strong); }
+.pd-rec-val { font-weight: 700; font-variant-numeric: tabular-nums; color: #d1650f; }
+.pd-standing { font-size: 14px; color: var(--ink-soft) !important; font-weight: 600 !important; }
+.pd-story { display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
+.pd-story-head, .pd-story-row { display: grid; grid-template-columns: 22px 46px 1fr 56px 96px; align-items: center; gap: 6px; }
+.pd-story-head { margin-top: 6px; }
+.pd-story-head span { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; }
+.pd-story-row { min-height: 30px; font-size: 15px; }
+.pd-story-row.boss { background: #fff1f4; border-radius: 8px; }
+.pd-story-time { font-weight: 700; color: var(--ink-strong); }
+.pd-story-tags { display: flex; gap: 4px; justify-content: flex-end; }
+.pd-story-tags .tag { font-style: normal; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: #eee; }
+.pd-story-tags .tag.boss { background: #ffe0e8; color: #c4455a; }
+.pd-story-tags .tag.combo { background: #fff0c2; color: #a57800; }
+.pd-story-tags .tag.clean { background: #e3f5e7; color: #2f8a48; }

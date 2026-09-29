@@ -14,7 +14,21 @@ import { feedback } from '../feedback'
 export type GameMode = 'session' | 'daily' | 'extra' | 'power'
 
 /** Power Hour listens for solves and mistakes without game.ts importing it (no cycle). */
-export type PowerSolveInfo = { puzzle: Puzzle; timeMs: number; clean: boolean; mistakes: number; hints: number }
+/** One correct piece: when (ms into the puzzle), which colour it showed then, and whether a hint placed it. */
+export type Pick = { t: number; c: string; h?: boolean }
+
+export type PowerSolveInfo = {
+  puzzle: Puzzle
+  timeMs: number
+  clean: boolean
+  mistakes: number
+  hints: number
+  firstTapMs: number
+  picks: Pick[]
+}
+
+/** The board tells the game which colour a cell is showing (themes, Power modes and Wild swaps vary it). */
+export const colourHooks: { colourAt: ((cell: number) => string) | null } = { colourAt: null }
 export const powerHooks: {
   onSolved: ((info: PowerSolveInfo) => void) | null
   onMistake: (() => void) | null
@@ -41,6 +55,8 @@ export type GameState = {
   firstTapMs: number
   history: HistoryEntry[]
   hintCells: number[]
+  /** every correct piece, in the order she found them */
+  picks?: Pick[]
   done: boolean
 }
 
@@ -183,6 +199,7 @@ export function startGame(p: {
     firstTapMs: -1,
     history: [],
     hintCells: [],
+    picks: [],
     done: false,
   }
   win.value = null
@@ -333,6 +350,12 @@ export function placePiece(i: number, fromHint = false, replaceLast = false) {
     for (const j of tidyCells(g.puzzle, marks)) marks[j] = M_X
   }
   if (fromHint) next = { ...next, hintCells: [...g.hintCells, i] }
+  // time each piece the first time it's found (undo + re-place doesn't reset it)
+  const picks = g.picks ?? []
+  if (!picks.some((p) => (p as Pick & { i?: number }).i === i)) {
+    const pick: Pick & { i: number } = { t: elapsed(g), c: colourHooks.colourAt?.(i) ?? '', i, ...(fromHint ? { h: true } : {}) }
+    next = { ...next, picks: [...picks, pick] }
+  }
   commit(next)
   lastEvent.value = { type: 'place', cell: i, t: Date.now() }
   feedback('place')
@@ -478,7 +501,15 @@ async function checkWin() {
   feedback('win')
   if (g.mode === 'power') {
     // Power Hour keeps its own records and flows straight on: no overlay, no normal stats
-    powerHooks.onSolved?.({ puzzle: g.puzzle, timeMs, clean: g.mistakes === 0 && g.hints === 0, mistakes: g.mistakes, hints: g.hints })
+    powerHooks.onSolved?.({
+      puzzle: g.puzzle,
+      timeMs,
+      clean: g.mistakes === 0 && g.hints === 0,
+      mistakes: g.mistakes,
+      hints: g.hints,
+      firstTapMs: Math.max(0, g.firstTapMs),
+      picks: (g.picks ?? []).map(({ t, c, h }) => (h ? { t, c, h } : { t, c })),
+    })
     return
   }
   const beat = sleep(700) // let her see the solved board before the overlay
@@ -513,6 +544,7 @@ async function checkWin() {
     clean,
     score,
     themeId: g.themeId,
+    picks: (g.picks ?? []).map(({ t, c, h }) => (h ? { t, c, h } : { t, c })),
   }
   const pb = g.mode !== 'extra' && isNewPB(counted, rec)
   const fasterPct = g.mode !== 'extra' ? fasterThanPct(counted, rec) : null

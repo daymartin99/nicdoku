@@ -121,3 +121,20 @@ describe('run lengths and modes', () => {
     expect(winWord(20 * MIN, 1, 0, 'calm')).not.toMatch(/!!/)
   })
 })
+
+describe('wild colour swaps', () => {
+  it('only wild swaps colours, starting in the build and speeding up', async () => {
+    const { swapCountAt, SWAPS, nextEvent } = await import('./timeline')
+    expect(swapCountAt(POWER_MS, 'normal')).toBe(0)
+    expect(swapCountAt(POWER_MS, 'calm')).toBe(0)
+    expect(swapCountAt(21 * MIN, 'wild')).toBe(0)
+    expect(swapCountAt(22 * MIN, 'wild')).toBe(1)
+    expect(swapCountAt(POWER_MS, 'wild')).toBe(SWAPS.length)
+    const gaps = SWAPS.slice(1).map((t, i) => t - SWAPS[i])
+    expect(Math.max(...gaps.slice(-5))).toBeLessThan(gaps[0])
+    // some swaps land on a spin: twist + swap together
+    const combos = SWAPS.filter((t) => SPINS.some((sp) => sp.at === t))
+    expect(combos.length).toBeGreaterThanOrEqual(4)
+    expect(nextEvent(46 * MIN, 'wild')?.label).toBe('twist + swap')
+  })
+})

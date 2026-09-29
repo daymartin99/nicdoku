@@ -38,6 +38,10 @@ import {
   weekMinutes,
 } from '../stats/psych'
 import { powerHistory, type PowerRun } from '../power/state'
+import { RecordTable } from '../components/RecordTable'
+import {
+  formatKey, formatLabel, formatsPlayed, formatRecords, thisWeek, topRuns, topSolves, breakRecords, weekStart,
+} from '../stats/records'
 import { allMoods, moodPairs, moodsFromRuns, type MoodPair } from '../mood'
 
 type Tab = 'overview' | 'size' | 'history' | 'power'
@@ -256,6 +260,7 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
   const [n, setN] = useState<number | undefined>(undefined)
   const size = n ?? mostPlayed
   const today = localDay()
+  const weekStartMs = weekStart()
 
   const d = useMemo(() => {
     if (size === undefined) return null
@@ -266,6 +271,8 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
       tr: trend(solves, size, 8, today),
       st: sizeStats(solves, size),
       pbs,
+      recs: breakRecords(solves, size),
+      weekRecs: breakRecords(solves.filter((x) => x.at >= weekStartMs), size),
     }
   }, [solves, size, today])
 
@@ -323,6 +330,16 @@ function BySize({ solves }: { solves: SolveRecord[] }) {
           <p class="muted" style={{ margin: 0 }}>Play this size across a couple of weeks and your line appears here.</p>
         )}
       </div>
+
+      {d.recs.length > 0 && (
+        <div class="card">
+          <div class="chart-caption">
+            <h3>{sizeLabel(size)} records</h3>
+            <span class="label">breaks + daily</span>
+          </div>
+          <RecordTable allTime={d.recs} week={d.weekRecs} />
+        </div>
+      )}
 
       <div class="card">
         <div class="chart-caption"><h3>Your fastest 5</h3></div>
@@ -427,7 +444,15 @@ function warmth(i: number, k: number): string {
   return `rgb(${c[0]}, ${c[1]}, ${c[2]})`
 }
 
-function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
+function PowerTab({ runs: allRuns, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
+  const formats = useMemo(() => formatsPlayed(allRuns), [allRuns])
+  const [picked, setPicked] = useState<string | null>(null)
+  const key = picked && formats.includes(picked) ? picked : formats[0]
+  const runs = useMemo(() => allRuns.filter((r) => formatKey(r) === key), [allRuns, key])
+  const book = useMemo(
+    () => ({ allTime: formatRecords(runs), week: formatRecords(thisWeek(runs)), top: topRuns(runs), fastest: topSolves(runs) }),
+    [runs],
+  )
   const d = useMemo(() => {
     if (!runs.length) return null
     const sorted = [...runs].sort((a, b) => b.startedAt - a.startedAt)
@@ -465,6 +490,61 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
 
   return (
     <div class="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div class="fmt-chips" role="tablist" aria-label="Power format">
+        {formats.map((f) => (
+          <button key={f} role="tab" aria-selected={f === key} class={`st-chip fmt-${f.split('-')[1]}`} onClick={() => setPicked(f)}>
+            {formatLabel(f)}
+          </button>
+        ))}
+      </div>
+
+      <div class="card">
+        <div class="chart-caption">
+          <h3>{formatLabel(key)} records</h3>
+          <span class="label">{runs.length} run{runs.length === 1 ? '' : 's'}</span>
+        </div>
+        <RecordTable allTime={book.allTime} week={book.week} highlight={latest.id} />
+        <p class="label chart-legend">★ = set this week · highlighted = your latest run</p>
+      </div>
+
+      {book.top.length > 1 && (
+        <div class="card">
+          <div class="chart-caption">
+            <h3>Top runs</h3>
+            <span class="label">{formatLabel(key)}</span>
+          </div>
+          <div class="top-table">
+            {book.top.map((t, i) => (
+              <div key={t.ref} class={`top-row${t.ref === latest.id ? ' mine' : ''}`}>
+                <span class="top-rank">{i + 1}</span>
+                <span>{shortDate(t.day)}</span>
+                <span class="muted">{t.puzzles} puzzles · ×{t.combo}</span>
+                <b>{t.score.toLocaleString('en-GB')}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {book.fastest.length > 1 && (
+        <div class="card">
+          <div class="chart-caption">
+            <h3>Fastest solves</h3>
+            <span class="label">{formatLabel(key)}</span>
+          </div>
+          <div class="top-table">
+            {book.fastest.map((t, i) => (
+              <div key={i} class={`top-row${t.ref === latest.id ? ' mine' : ''}`}>
+                <span class="top-rank">{i + 1}</span>
+                <span>{shortDate(t.day)}</span>
+                <span class="muted">{t.n}×{t.n}</span>
+                <b>{formatTime(t.timeMs)}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div class="card">
         <div class="chart-caption">
           <h3>Your latest {lenLabel} run</h3>
@@ -531,7 +611,7 @@ function PowerTab({ runs, pairs }: { runs: PowerRun[]; pairs: MoodPair[] }) {
       )}
 
       <div>
-        <div class="st-day">All Power runs</div>
+        <div class="st-day">All {formatLabel(key)} runs</div>
         <div class="card" style={{ padding: '4px 16px', marginTop: 6 }}>
           {d.sorted.map((r) => (
             <div class="st-row" key={r.id}>

@@ -5,7 +5,11 @@ import { MoodTap } from '../components/MoodTap'
 import { BarChart, LineChart } from '../components/charts'
 import type { HrSample } from '../native/bridge'
 import { formatTime } from '../stats/metrics'
+import {
+  formatKey, formatLabel, newRecords, newWeeklyRecords, isFirstOfFormat, formatRecords, rankOf, thisWeek, ordinal, formatSecs,
+} from '../stats/records'
 import './power.css'
+import '../components/RecordTable.css'
 
 /** bar colour per twelfth of the run, matching the stages: warm, build, surge, crescendo */
 const STAGE_COLOURS = [...Array(3).fill('#8dd67e'), ...Array(4).fill('#f7a05e'), ...Array(3).fill('#f0507a'), ...Array(2).fill('#9b7be0')]
@@ -56,19 +60,20 @@ function fmtMin(m: number) {
 /** Results after the crescendo: what she did, the peak and the end, then rest until tomorrow. */
 export function PowerDoneScreen() {
   const r = power.value
-  const [prev, setPrev] = useState<PowerRun | null>(null)
+  const [formatRuns, setFormatRuns] = useState<PowerRun[]>([])
   const [mood, setMood] = useState<number | undefined>(r?.moodAfter)
   useEffect(() => {
+    if (!r) return
     powerHistory()
       .then((list) => {
-        // compare only with an earlier run of the same length
-        const older = list
-          .filter((x) => x.id !== r?.id && x.endedAt && (x.durationMs ?? 3_600_000) === (r?.durationMs ?? 3_600_000))
-          .sort((a, b) => b.startedAt - a.startedAt)
-        setPrev(older[0] ?? null)
+        // this run's format only (same length and intensity), always including this run
+        const key = formatKey(r)
+        const same = list.filter((x) => x.endedAt && formatKey(x) === key && x.id !== r.id)
+        setFormatRuns([...same, r])
       })
-      .catch(() => {})
-  }, [r?.id])
+      .catch(() => setFormatRuns([r]))
+  }, [r?.id, r?.endedAt])
+  const prev = formatRuns.filter((x) => x.id !== r?.id && x.startedAt < (r?.startedAt ?? 0)).sort((a, b) => b.startedAt - a.startedAt)[0] ?? null
   if (!r) {
     leavePowerDone()
     return null
@@ -114,6 +119,8 @@ export function PowerDoneScreen() {
           <b class="big-num">{r.bestCombo}</b>
         </div>
       </div>
+
+      {formatRuns.length > 0 && <RecordsCard run={r} formatRuns={formatRuns} />}
 
       <div class="card">
         <span class="label">Your crescendo (puzzles per {sliceMin >= 1 ? `${Math.round(sliceMin * 10) / 10} min` : `${Math.round(sliceMin * 60)} s`})</span>
@@ -163,6 +170,8 @@ export function PowerDoneScreen() {
         </p>
       </div>
 
+      <StoryCard run={r} />
+
       {mood === undefined ? (
         <MoodTap
           compact
@@ -180,6 +189,91 @@ export function PowerDoneScreen() {
       <button class="btn" onClick={leavePowerDone}>
         {restingToday() ? 'See you tomorrow' : left > 0 ? `Rest now · ${left} min of Power left today` : 'Done'}
       </button>
+    </div>
+  )
+}
+
+/** What this run broke, and where it sits in its format (all time and this week). */
+function RecordsCard({ run, formatRuns }: { run: PowerRun; formatRuns: PowerRun[] }) {
+  const label = formatLabel(formatKey(run))
+  if (isFirstOfFormat(formatRuns, run.id)) {
+    const set = formatRecords([run]).length
+    return (
+      <div class="card pd-records first">
+        <b>Your first {label} run</b>
+        <p>{set} records set. Every one of them is there to beat next time.</p>
+      </div>
+    )
+  }
+  const allTime = newRecords(formatRuns, run.id)
+  const weekly = newWeeklyRecords(formatRuns, run.id)
+  const rank = rankOf(formatRuns, run.id, (x) => x.score)
+  const week = thisWeek(formatRuns)
+  const weekRank = rankOf(week, run.id, (x) => x.score)
+  return (
+    <div class="card pd-records">
+      <b>{allTime.length ? `${allTime.length} new record${allTime.length === 1 ? '' : 's'}` : weekly.length ? 'Best of the week' : label}</b>
+      {allTime.length > 0 && (
+        <ul class="pd-rec-list">
+          {allTime.map((x) => (
+            <li key={x.id}>
+              <span class="pd-rec-icon" aria-hidden="true">🏆</span>
+              {x.hex && <i class="rt-swatch" style={{ background: x.hex }} />}
+              <span class="pd-rec-label">{x.label}</span>
+              <span class="pd-rec-val">{x.display}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {weekly.length > 0 && (
+        <ul class="pd-rec-list week">
+          {weekly.map((x) => (
+            <li key={x.id}>
+              <span class="pd-rec-icon" aria-hidden="true">★</span>
+              {x.hex && <i class="rt-swatch" style={{ background: x.hex }} />}
+              <span class="pd-rec-label">{x.label} this week</span>
+              <span class="pd-rec-val">{x.display}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p class="pd-standing">
+        {ordinal(rank.rank)} best score of {rank.of} in {label}
+        {week.length > 1 ? ` · ${ordinal(weekRank.rank)} of ${weekRank.of} this week` : ''}
+      </p>
+    </div>
+  )
+}
+
+/** The run, puzzle by puzzle: size, time, how fast the first piece came, and what happened. */
+function StoryCard({ run }: { run: PowerRun }) {
+  if (!run.solves.length) return null
+  return (
+    <div class="card pd-story">
+      <b>Puzzle by puzzle</b>
+      <div class="pd-story-head" aria-hidden="true">
+        <span>#</span>
+        <span>Size</span>
+        <span>1st piece</span>
+        <span>Time</span>
+        <span />
+      </div>
+      {run.solves.map((s, i) => {
+        const first = [...(s.picks ?? [])].sort((a, b) => a.t - b.t)[0]
+        return (
+          <div key={i} class={`pd-story-row${s.boss ? ' boss' : ''}`}>
+            <span class="muted">{i + 1}</span>
+            <span>{s.n}×{s.n}</span>
+            <span>{first && !first.h ? formatSecs(first.t) : '–'}</span>
+            <span class="pd-story-time">{formatTime(s.timeMs)}</span>
+            <span class="pd-story-tags">
+              {s.boss && <em class="tag boss">boss</em>}
+              {s.combo >= 3 && <em class="tag combo">×{s.combo}</em>}
+              {s.clean && <em class="tag clean">clean</em>}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -25,6 +25,8 @@ export type SolveRecord = {
   clean: boolean
   score: number
   themeId: string
+  /** each correct piece: ms into the puzzle, colour shown, placed by a hint */
+  picks?: { t: number; c: string; h?: boolean }[]
 }
 
 let dbp: Promise<IDBPDatabase> | null = null

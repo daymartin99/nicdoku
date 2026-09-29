@@ -8,6 +8,9 @@ export const spin = signal<{ deg: number; mirror: boolean; pulse: { kind: SpinKi
   pulse: null,
 })
 
+/** When the last Wild colour swap landed (drives a short glitch on the board). */
+export const swapPulse = signal(0)
+
 export function resetSpin() {
   spin.value = { deg: 0, mirror: false, pulse: null }
 }

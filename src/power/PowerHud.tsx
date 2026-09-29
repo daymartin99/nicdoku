@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { power, powerPhase, powerElapsed, powerArc, powerNow, burst, endPower, runDuration, runMode, runMinutes } from './state'
-import { POWER_MS, STAGES, stageAt, orientationAt, nextSpin, bpmAt, comboMultiplier } from './timeline'
-import { spin, resetSpin } from './spin'
+import { POWER_MS, STAGES, stageAt, orientationAt, nextEvent, bpmAt, comboMultiplier } from './timeline'
+import { spin, resetSpin, swapPulse } from './spin'
+import { swapCount } from './palette'
 import { startPowerSound, stopPowerSound, whoosh, finalHit, glitchSting } from './sound'
 import { go } from '../router'
 import { native } from '../native/bridge'
@@ -42,6 +43,17 @@ export function PowerDriver() {
     }
     if (live && r?.sound) whoosh()
   }, [lastAt])
+
+  // wild colour swaps: a glitch burst on the board and a glitch sting
+  const swaps = swapCount.value
+  const lastSwaps = useRef<number>(-1)
+  useEffect(() => {
+    const live = lastSwaps.current !== -1 && swaps > lastSwaps.current
+    lastSwaps.current = swaps
+    if (!live) return
+    swapPulse.value = Date.now()
+    if (r?.sound) glitchSting()
+  }, [swaps])
 
   // end sequence: TIME. slam → breathe → results
   const phase = powerPhase.value
@@ -105,7 +117,7 @@ export function ComboPill() {
 export function StageBar() {
   const r = power.value
   const ms = powerArc(r, powerNow.value)
-  const next = nextSpin(ms, runMode(r))
+  const next = nextEvent(ms, runMode(r))
   const toSpin = next ? (next.at - ms) * (runDuration(r) / POWER_MS) : Infinity
   return (
     <div class="stage-bar">
@@ -119,7 +131,11 @@ export function StageBar() {
           )
         })}
       </div>
-      {toSpin < 15_000 && <span class="spin-warn">spin in {Math.ceil(toSpin / 1000)}</span>}
+      {toSpin < 15_000 && next && (
+        <span class="spin-warn">
+          {next.label} in {Math.ceil(toSpin / 1000)}
+        </span>
+      )}
     </div>
   )
 }

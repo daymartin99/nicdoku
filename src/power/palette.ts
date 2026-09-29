@@ -1,8 +1,9 @@
 // Board colours for Power modes. Normal keeps today's theme; calm goes soft; wild goes neon.
 import { computed } from '@preact/signals'
 import { PALETTES } from '../themes/palettes'
-import type { PowerMode } from './timeline'
-import { power, runMode } from './state'
+import { swapCountAt, type PowerMode } from './timeline'
+import { power, runMode, powerArc, powerNow } from './state'
+import { makeRng } from '../engine/rng'
 import type { PieceArt } from '../themes/types'
 
 /** Neon for wild mode: bright on near-black. X marks switch to dark ink on these (see power.css). */
@@ -38,4 +39,27 @@ export const NEON_PIECE: PieceArt = {
 /** The piece to draw: wild swaps in the neon bolt, other modes keep today's piece. */
 export function powerPiece(mode: PowerMode | null, art: PieceArt): PieceArt {
   return mode === 'wild' ? NEON_PIECE : art
+}
+
+// ---- wild colour swaps ----
+
+/** How many colour swaps the running Wild board has had (0 outside Wild). */
+export const swapCount = computed(() => {
+  const r = power.value
+  if (!r || r.seen || runMode(r) !== 'wild') return 0
+  void powerNow.value
+  return swapCountAt(powerArc(r), 'wild')
+})
+
+/** A fresh order of the palette for swap k (same run, same k → same colours, e.g. after a reload). */
+export function swapPalette(palette: string[], k: number, seed: string): string[] {
+  if (!k) return palette
+  return makeRng(`${seed}:swap:${k}`).shuffle([...palette])
+}
+
+/** The palette actually on the board right now: theme/mode colours, reshuffled by Wild swaps. */
+export function livePalette(isPower: boolean, themePalette: string[]): string[] {
+  const mode = isPower ? boardMode.value : null
+  const base = powerPalette(mode, themePalette)
+  return mode === 'wild' ? swapPalette(base, swapCount.value, power.value?.id ?? '') : base
 }

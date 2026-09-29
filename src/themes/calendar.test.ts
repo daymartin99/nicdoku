@@ -17,6 +17,8 @@ import type { FamilyData } from './types'
 // lives outside the repo. Dates are chosen to exercise the same edge cases.
 const FAMILY: FamilyData = {
   members: [
+    // invented test dates: a week containing Burns Night, two close May birthdays,
+    // one just after New Year, and "her" week (the Birthday Queen logic keys off the name)
     { name: 'Alex', birthday: '2014-01-28', emoji: '🦋' },
     { name: 'Robin', birthday: '2019-01-04', emoji: '🌈' },
     { name: 'Sam', birthday: '2015-05-12' },
@@ -160,11 +162,11 @@ describe('pieces and palettes', () => {
 
 describe('family birthdays', () => {
   it('a birthday week is the 7 days ending on the birthday', () => {
-    expect(resolveTheme(d('2026-01-23'), FAMILY).theme.id).not.toBe('birthday-alex')
-    for (const day of ['2026-01-24', '2026-01-27', '2026-01-30']) {
+    expect(resolveTheme(d('2026-01-21'), FAMILY).theme.id).not.toBe('birthday-alex')
+    for (const day of ['2026-01-22', '2026-01-25', '2026-01-28']) {
       expect(resolveTheme(d(day), FAMILY).theme.id).toBe('birthday-alex')
     }
-    expect(resolveTheme(d('2026-01-31'), FAMILY).theme.id).not.toBe('birthday-alex')
+    expect(resolveTheme(d('2026-01-29'), FAMILY).theme.id).not.toBe('birthday-alex')
   })
 
   it('personal beats holidays (Burns Night inside a birthday week)', () => {
@@ -174,38 +176,38 @@ describe('family birthdays', () => {
   })
 
   it('writes countdown and big-day text with correct ages', () => {
-    const before = resolveTheme(d('2026-01-27'), FAMILY)
-    expect(before.theme.tagline).toBe('Alex turns 13 in 3 days 🎂')
+    const before = resolveTheme(d('2026-01-25'), FAMILY)
+    expect(before.theme.tagline).toBe('Alex turns 12 in 3 days 🎂')
     expect(before.isBigDay).toBe(false)
-    expect(resolveTheme(d('2026-01-29'), FAMILY).theme.tagline).toBe('Alex turns 13 tomorrow 🎂')
-    const day = resolveTheme(d('2026-01-30'), FAMILY)
-    expect(day.theme.tagline).toBe("It's Alex's birthday! 13 today 🎉")
+    expect(resolveTheme(d('2026-01-27'), FAMILY).theme.tagline).toBe('Alex turns 12 tomorrow 🎂')
+    const day = resolveTheme(d('2026-01-28'), FAMILY)
+    expect(day.theme.tagline).toBe("It's Alex's birthday! 12 today 🎉")
     expect(day.isBigDay).toBe(true)
   })
 
   it('overlapping weeks: the nearest birthday owns the theme, others become countdowns', () => {
-    // Sam 16 May, Kit 21 May – both weeks cover 15–16 May
-    const r = resolveTheme(d('2026-05-15'), FAMILY)
+    // Sam 12 May, Kit 17 May – both weeks cover 11–12 May
+    const r = resolveTheme(d('2026-05-11'), FAMILY)
     expect(r.theme.id).toBe('birthday-sam')
-    expect(r.countdowns).toContain('Kit turns 15 in 6 days 🎂')
-    expect(resolveTheme(d('2026-05-17'), FAMILY).theme.id).toBe('birthday-kit')
+    expect(r.countdowns).toContain('Kit turns 16 in 6 days 🎂')
+    expect(resolveTheme(d('2026-05-13'), FAMILY).theme.id).toBe('birthday-kit')
   })
 
-  it('handles year rollover (5 Jan viewed from 31 Dec)', () => {
+  it('handles year rollover (4 Jan viewed from 31 Dec)', () => {
     const r = resolveTheme(d('2026-12-31'), FAMILY)
-    expect(r.countdowns).toContain('Robin turns 9 in 5 days 🎂')
+    expect(r.countdowns).toContain('Robin turns 8 in 4 days 🎂')
     const ny = resolveTheme(d('2027-01-01'), FAMILY)
     expect(ny.theme.id).toBe('birthday-robin')
-    expect(ny.theme.tagline).toBe('Robin turns 9 in 4 days 🎂')
+    expect(ny.theme.tagline).toBe('Robin turns 8 in 3 days 🎂')
   })
 
   it("gives Nicola's week the Birthday Queen treatment", () => {
-    const r = resolveTheme(d('2026-11-18'), FAMILY)
+    const r = resolveTheme(d('2026-11-21'), FAMILY)
     expect(r.theme.id).toBe('birthday-queen')
     expect(r.theme.palette).toEqual(PALETTES.queen)
     expect(r.theme.winWords).toContain('Birthday Queen!')
     expect(r.theme.tagline).toContain('3 days to go')
-    const day = resolveTheme(d('2026-11-21'), FAMILY)
+    const day = resolveTheme(d('2026-11-24'), FAMILY)
     expect(day.isBigDay).toBe(true)
     expect(day.theme.tagline).toContain('Happy birthday, Nicola!')
   })
@@ -243,7 +245,7 @@ describe('special dates', () => {
 
 describe('override and upcoming', () => {
   it('a manual pick wins but countdowns remain', () => {
-    const r = resolveTheme(d('2026-01-27'), FAMILY, 'classic')
+    const r = resolveTheme(d('2026-01-25'), FAMILY, 'classic')
     expect(r.theme.id).toBe('classic')
     const bad = resolveTheme(d('2026-02-03'), null, 'nope')
     expect(bad.theme.id).toBe('season-feb')
@@ -255,7 +257,7 @@ describe('override and upcoming', () => {
     expect(titles).toContain('Christmas Day')
     expect(titles).toContain("New Year's Eve")
     expect(titles).toContain('Two reasons to celebrate')
-    expect(titles).toContain("Robin's birthday (9)")
+    expect(titles).toContain("Robin's birthday (8)")
     const dates = list.map((u) => u.date)
     expect([...dates].sort()).toEqual(dates)
     expect(list.every((u) => u.date >= '2026-12-20' && u.date < '2027-01-09')).toBe(true)

@@ -10,7 +10,7 @@ export const POWER_MS = 60 * 60_000
 const MIN = 60_000
 
 export type PowerMode = 'calm' | 'normal' | 'wild'
-export const DURATIONS_MIN = [10, 30, 45, 60] as const
+export const DURATIONS_MIN = [5, 10, 30, 45, 60] as const
 /** Power minutes per day; after using them, everything rests until tomorrow */
 export const DAILY_POWER_MIN = 60
 
@@ -128,6 +128,32 @@ export function orientationAt(ms: number, mode: PowerMode = 'normal'): Orientati
 
 export function nextSpin(ms: number, mode: PowerMode = 'normal'): SpinEvent | null {
   return spinsFor(mode).find((e) => e.at > ms) ?? null
+}
+
+// ---- wild colour swaps ----
+// Wild only: the board keeps its layout but every colour trades places. They start in the build,
+// get closer together, and from the surge some land exactly on a spin (twist + glitch + recolour).
+
+const SWAP_MIN = [22, 29, 33, 38.5, 42, 45.5, 47.5, 50, 51.5, 53, 55, 56.25, 57.25, 58.25, 59.25]
+
+export const SWAPS: number[] = SWAP_MIN.map((m) => m * MIN)
+
+export function swapsFor(mode: PowerMode = 'normal'): number[] {
+  return mode === 'wild' ? SWAPS : []
+}
+
+/** How many colour swaps have happened by this point of the arc. */
+export function swapCountAt(ms: number, mode: PowerMode = 'normal'): number {
+  return swapsFor(mode).filter((at) => at <= ms).length
+}
+
+/** The next twist, glitch or recolour coming up (for the warning in the stage bar). */
+export function nextEvent(ms: number, mode: PowerMode = 'normal'): { at: number; label: string } | null {
+  const spin = nextSpin(ms, mode)
+  const swap = swapsFor(mode).find((at) => at > ms)
+  if (spin && swap !== undefined && Math.abs(spin.at - swap) < 1000) return { at: spin.at, label: 'twist + swap' }
+  if (swap !== undefined && (!spin || swap < spin.at)) return { at: swap, label: 'colour swap' }
+  return spin ? { at: spin.at, label: 'spin' } : null
 }
 
 // ---- puzzle plan ----
