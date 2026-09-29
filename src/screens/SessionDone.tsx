@@ -10,6 +10,7 @@ import { saveMood } from '../mood'
 import './home.css'
 import { weekly, refreshWeekly } from '../state/weekly'
 import '../power/power.css'
+import { WelcomeBack } from '../components/WelcomeBack'
 
 // Calm, honest closing lines. One is picked per break.
 const MESSAGES = [
@@ -80,6 +81,8 @@ export function SessionDoneScreen() {
           {s.results.length} puzzles · {formatTime(time)} solving
         </p>
       </div>
+
+      <WelcomeBack day={localDay(new Date(s.startedAt))} since={s.startedAt} />
 
       {challengeDone && (
         <div class="card pd-challenge fade-in" role="status">

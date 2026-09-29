@@ -6,6 +6,10 @@ export const SICK_COOLDOWN_MIN = 20
 export const LIVES = 3
 /** extra puzzles allowed during a cooldown (not counted in stats) */
 export const JUST_ONE_MORE = 1
+/** past dailies she can replay each day (not counted in stats) */
+export const ARCHIVE_PER_DAY = 2
+/** how far back the archive goes */
+export const ARCHIVE_DAYS = 28
 export const DOUBLE_TAP_MS = 420
 export const APP_NAME = 'Nicdoku'
 /**

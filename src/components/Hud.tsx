@@ -14,8 +14,8 @@ import { boardMode, livePalette, powerPiece } from '../power/palette'
 export function Header({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const g = game.value!
   const pr = progress.value
-  const label = g.mode === 'daily' ? 'Daily' : g.mode === 'extra' ? 'Bonus' : 'Level'
-  const value = g.mode === 'daily' ? '★' : g.mode === 'extra' ? '+1' : String(g.level)
+  const label = g.mode === 'daily' ? 'Daily' : g.mode === 'extra' ? 'Bonus' : g.mode === 'replay' ? 'Replay' : 'Level'
+  const value = g.mode === 'daily' ? '★' : g.mode === 'extra' ? '+1' : g.mode === 'replay' ? '↺' : String(g.level)
   return (
     <div class="topbar game-top">
       <button class="round-btn" onClick={onBack} aria-label="Back">

@@ -40,7 +40,8 @@ export function WinOverlay() {
   }, [])
 
   let line: string
-  if (w.pb) line = 'New personal best!'
+  if (w.replayLine) line = w.replayLine
+  else if (w.pb) line = 'New personal best!'
   else if (w.fasterPct !== null && w.fasterPct >= 50) line = `Faster than ${w.fasterPct}% of your ${g?.puzzle.n}×${g?.puzzle.n} solves`
   else if (w.clean) line = 'A clean solve: no mistakes, no hints'
   else line = 'Solved. Nice work.'

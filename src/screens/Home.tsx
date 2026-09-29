@@ -4,7 +4,7 @@ import { game } from '../state/game'
 import { progress, inCooldown } from '../state/progress'
 import { settings } from '../state/settings'
 import { resolved, theme, pieceArt, nextPersonal } from '../state/theme'
-import { startBreak, startDaily, startExtra, continueGame, loading, warmUp } from '../flow'
+import { startBreak, startDaily, startExtra, continueGame, loading, warmUp, archiveLeft } from '../flow'
 import { allSolves, localDay, lsGet, lsSet, type SolveRecord } from '../db'
 import { headline, streak, formatTime } from '../stats/metrics'
 import { JUST_ONE_MORE, SESSION_SIZE } from '../config'
@@ -197,7 +197,13 @@ export function HomeScreen() {
       ) : g && !g.done && g.mode !== 'power' ? (
         <button class="btn main-cta" onClick={continueGame}>
           Continue puzzle
-          <small>{g.mode === 'daily' ? 'Daily puzzle' : `Level ${g.level} · ${g.puzzle.n}×${g.puzzle.n}`}</small>
+          <small>
+            {g.mode === 'daily'
+              ? 'Daily puzzle'
+              : g.mode === 'replay'
+                ? 'Past daily'
+                : `Level ${g.level} · ${g.puzzle.n}×${g.puzzle.n}`}
+          </small>
         </button>
       ) : cooling && !sessionOpen ? (
         <div class="card cooldown-card">
@@ -246,6 +252,11 @@ export function HomeScreen() {
           </span>
         </span>
       </button>
+      )}
+      {!resting && (
+        <button class="link-btn archive-link" onClick={() => go('archive')}>
+          Past dailies{archiveLeft(today) > 0 ? ` · ${archiveLeft(today)} replay${archiveLeft(today) === 1 ? '' : 's'} left today` : ''}
+        </button>
       )}
 
       <ChallengeCard disabled={resting || loading.value || otherGameOpen} />

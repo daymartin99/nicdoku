@@ -10,8 +10,9 @@ import { settings } from './settings'
 import { progress, patchProgress, finishSession, type SessionResult } from './progress'
 import { medianTime, fasterThanPct, isNewPB } from '../stats/metrics'
 import { feedback } from '../feedback'
+import { replayLine } from '../stats/archive'
 
-export type GameMode = 'session' | 'daily' | 'extra' | 'power'
+export type GameMode = 'session' | 'daily' | 'extra' | 'power' | 'replay'
 
 /** Power Hour listens for solves and mistakes without game.ts importing it (no cycle). */
 /** One correct piece: when (ms into the puzzle), which colour it showed then, and whether a hint placed it. */
@@ -42,6 +43,8 @@ export type GameState = {
   mode: GameMode
   level: number
   sessionId?: string
+  /** replaying this day's daily from the archive */
+  replayOf?: string
   themeId: string
   marks: number[]
   /** pencil layer (0 none, 1 X, 2 piece) or null when pencil is off */
@@ -68,6 +71,8 @@ export type WinInfo = {
   fasterPct: number | null
   median: number | null
   mode: GameMode
+  /** archive replays: how it compares with the day */
+  replayLine?: string
 }
 
 const HISTORY_CAP = 50
@@ -184,6 +189,7 @@ export function startGame(p: {
   mode: GameMode
   level: number
   sessionId?: string
+  replayOf?: string
   themeId: string
 }) {
   const g: GameState = {
@@ -524,12 +530,14 @@ async function checkWin() {
     }
   }
   const counted = history.filter((s) => s.mode !== 'extra')
+  const isReplay = g.mode === 'replay'
   const median = medianTime(counted, g.puzzle.n)
   const score = computeScore(g.puzzle, timeMs, clean, g.hints, median)
   const rec: SolveRecord = {
     at: Date.now(),
     day: localDay(),
-    mode: g.mode,
+    mode: g.mode === 'replay' ? 'extra' : g.mode,
+    ...(isReplay ? { replayOf: g.replayOf } : {}),
     sessionId: g.sessionId,
     level: g.level,
     n: g.puzzle.n,
@@ -546,8 +554,14 @@ async function checkWin() {
     themeId: g.themeId,
     picks: (g.picks ?? []).map(({ t, c, h }) => (h ? { t, c, h } : { t, c })),
   }
-  const pb = g.mode !== 'extra' && isNewPB(counted, rec)
-  const fasterPct = g.mode !== 'extra' ? fasterThanPct(counted, rec) : null
+  const pb = rec.mode !== 'extra' && isNewPB(counted, rec)
+  const fasterPct = rec.mode !== 'extra' ? fasterThanPct(counted, rec) : null
+  let replay: string | undefined
+  if (isReplay) {
+    const onDay = history.find((s) => s.mode === 'daily' && s.day === g.replayOf)
+    const prev = history.filter((s) => s.replayOf === g.replayOf).map((s) => s.timeMs)
+    replay = replayLine(timeMs, onDay?.timeMs ?? null, prev.length ? Math.min(...prev) : null)
+  }
 
   // progress first (synchronous), so closing the app now can't replay or lose this solve
   const pr = progress.value
@@ -564,7 +578,7 @@ async function checkWin() {
     if (pr.session.index + 1 >= SESSION_SIZE && !pr.session.finishedAt) finishSession()
   } else if (g.mode === 'daily') {
     patchProgress({ daily: { day: localDay(), timeMs, clean, score }, totalScore: pr.totalScore + score })
-  } else {
+  } else if (!isReplay) {
     patchProgress({ extrasUsed: pr.extrasUsed + 1 })
   }
 
@@ -576,7 +590,7 @@ async function checkWin() {
       /* keep going */
     })
   await Promise.all([statsWork, beat])
-  win.value = { timeMs, score, clean, pb, fasterPct, median, mode: g.mode }
+  win.value = { timeMs, score, clean, pb, fasterPct, median, mode: g.mode, replayLine: replay }
 }
 
 /** Stop the board where it is (Power Hour's clock ran out mid-puzzle). */

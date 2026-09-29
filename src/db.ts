@@ -27,6 +27,8 @@ export type SolveRecord = {
   themeId: string
   /** each correct piece: ms into the puzzle, colour shown, placed by a hint */
   picks?: { t: number; c: string; h?: boolean }[]
+  /** a replay of this day's daily puzzle (saved as 'extra', so never counted in stats) */
+  replayOf?: string
 }
 
 let dbp: Promise<IDBPDatabase> | null = null

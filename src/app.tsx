@@ -14,6 +14,7 @@ import { AboutScreen } from './screens/About'
 import { OnboardingScreen } from './screens/Onboarding'
 import { PowerIntroScreen } from './power/PowerIntro'
 import { PowerDoneScreen } from './power/PowerDone'
+import { ArchiveScreen } from './screens/Archive'
 import { power, resumePower } from './power/state'
 import { UpdateToast } from './components/UpdateToast'
 import { lsGet, lsSet } from './db'
@@ -83,6 +84,7 @@ export function App() {
       {r === 'onboarding' && <OnboardingScreen />}
       {r === 'power-intro' && <PowerIntroScreen />}
       {r === 'power-done' && <PowerDoneScreen />}
+      {r === 'archive' && <ArchiveScreen />}
       <UpdateToast />
     </Guard>
   )

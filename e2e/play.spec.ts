@@ -251,3 +251,53 @@ test('start again: a tap does nothing, a 2-second hold wipes progress but keeps 
   await page.getByRole('button', { name: "Let's go" }).click()
   await expect(page.getByLabel('Starting level')).toHaveValue('1')
 })
+
+test('past dailies: replay yesterday, race the day, never counted; month card and comebacks in stats', async ({ page }) => {
+  await skipOnboarding(page)
+  // yesterday's daily took 10:00, and before that she'd been away for over a week
+  await page.evaluate(async () => {
+    const day = (k: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() - k)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+    const rec = (k: number, over: object) => ({
+      at: Date.now() - k * 86_400_000, day: day(k), mode: 'session', sessionId: `s${k}`, level: 100, n: 9,
+      difficulty: 'medium', grade: 2, timeMs: 120_000, firstTapMs: 2000, mistakes: 0, hints: 0, assists: 0,
+      undos: 0, clean: true, score: 500, themeId: 'x', ...over,
+    })
+    const recs = [rec(12, {}), rec(11, {}), rec(10, {}), rec(1, { mode: 'daily', sessionId: undefined, timeMs: 600_000 })]
+    await new Promise<void>((res, rej) => {
+      const req = indexedDB.open('nicdoku')
+      req.onsuccess = () => {
+        const tx = req.result.transaction('solves', 'readwrite')
+        for (const r of recs) tx.objectStore('solves').add(r)
+        tx.oncomplete = () => { req.result.close(); res() }
+        tx.onerror = () => rej(tx.error)
+      }
+      req.onerror = () => rej(req.error)
+    })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: /Past dailies · 2 replays left today/ }).click()
+  await expect(page.getByText('2 of 2 replays left today')).toBeVisible()
+  const row = page.locator('.archive-row').first()
+  await expect(row).toContainText('On the day 10:00')
+
+  await row.locator('.ar-play').click()
+  await expect(page.locator('.mode-chip')).toContainText(/Daily from .* · not counted/)
+  await solveCurrent(page)
+  await expect(page.locator('.win-line')).toContainText(/faster than on the day \(10:00\)/)
+  await page.locator('.win-btn.ready').click()
+
+  // straight back to the archive, one replay used, replay time shown
+  await expect(page.getByText('1 of 2 replays left today')).toBeVisible()
+  await expect(page.locator('.archive-row').first()).toContainText(/Replay \d+:\d\d ↑/)
+
+  // stats: the replay isn't a PB or counted time; the month card and comeback show
+  await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: /Stats/ }).click()
+  await expect(page.locator('.month-card')).toContainText('Dailies')
+  await expect(page.getByRole('button', { name: 'Share as a picture' })).toBeVisible()
+  await expect(page.locator('.ps-card', { hasText: 'Comebacks' })).toContainText('Came back 1 time after 3+ days away')
+})

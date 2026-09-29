@@ -1,0 +1,16 @@
+.month-card { display: flex; flex-direction: column; gap: 12px; }
+.mc-months { display: flex; gap: 6px; }
+.mc-months button {
+  border: 0; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 14px;
+  background: var(--card-soft); color: var(--ink);
+}
+.mc-months button[aria-selected='true'] { background: var(--accent); color: var(--accent-ink); }
+.mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mc-cell { background: var(--card-soft); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mc-cell .label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-cell b { color: var(--ink-strong); font-size: 20px; display: flex; align-items: center; gap: 8px; }
+.mc-swatch { width: 18px; height: 18px; border-radius: 5px; flex: none; }
+.mc-foot { margin: 0; text-align: center; }
+.mc-share { width: 100%; }
+.mc-msg { margin: 0; text-align: center; }
+.mc-cell:last-child:nth-child(odd) { grid-column: span 2; }

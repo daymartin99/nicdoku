@@ -48,6 +48,9 @@ export type Progress = {
   powerUsedMin: number
   /** epoch ms: after a Power run, everything rests until then */
   powerRestUntil: number
+  /** archive replays started on archiveDay */
+  archiveDay?: string | null
+  archiveUsed?: number
 }
 
 const fresh = (): Progress => ({

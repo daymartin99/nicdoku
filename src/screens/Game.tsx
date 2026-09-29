@@ -15,6 +15,7 @@ import { UndoIcon, PencilIcon, ResetIcon, CloseIcon } from '../components/Icons'
 import { PowerDriver, PowerHeader, ComboPill, StageBar, GhostBar, Burst, TimeSlam, Breathe, powerStyle, stageClass } from '../power/PowerHud'
 import { powerPhase } from '../power/state'
 import { spin, swapPulse } from '../power/spin'
+import { shortDay } from '../stats/archive'
 import '../power/power.css'
 
 export function GameScreen() {
@@ -90,7 +91,13 @@ export function GameScreen() {
             ))}
           </span>
         ) : (
-          <span class="mode-chip">{g.mode === 'daily' ? 'Daily puzzle' : 'Bonus puzzle · not counted'}</span>
+          <span class="mode-chip">
+            {g.mode === 'daily'
+              ? 'Daily puzzle'
+              : g.mode === 'replay' && g.replayOf
+                ? `Daily from ${shortDay(g.replayOf)} · not counted`
+                : 'Bonus puzzle · not counted'}
+          </span>
         )}
         <span class={`diff-chip ${g.puzzle.difficulty}`}>{g.puzzle.difficulty}</span>
         <span class="sub-right">

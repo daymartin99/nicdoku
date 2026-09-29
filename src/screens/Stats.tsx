@@ -42,6 +42,8 @@ import { RecordTable } from '../components/RecordTable'
 import {
   formatKey, formatLabel, formatsPlayed, formatRecords, thisWeek, topRuns, topSolves, breakRecords, weekStart,
 } from '../stats/records'
+import { MonthCard } from '../components/MonthCard'
+import { comebacks, comebackStats, vsUsualPct, COMEBACK_GAP_DAYS } from '../stats/comeback'
 import { allMoods, moodPairs, moodsFromRuns, type MoodPair } from '../mood'
 
 type Tab = 'overview' | 'size' | 'history' | 'power'
@@ -149,7 +151,7 @@ function Overview({ solves, runs, pairs }: { solves: SolveRecord[]; runs: PowerR
   const { t, st, series, head, heat, weeks, first } = data
   const psych = useMemo(() => {
     const mins = weekMinutes(solves, runs, today)
-    return { lift: moodLift(pairs, 'break'), warm: warmUp(solves), mins, life: realLife(mins) }
+    return { lift: moodLift(pairs, 'break'), warm: warmUp(solves), mins, life: realLife(mins), back: comebackStats(comebacks(solves, runs)) }
   }, [solves, runs, pairs, today])
 
   const bars = series.map((d, i) => ({
@@ -174,6 +176,8 @@ function Overview({ solves, runs, pairs }: { solves: SolveRecord[]; runs: PowerR
         <Tile label="Best session score" value={t.bestSessionScore ? t.bestSessionScore.toLocaleString('en-GB') : '–'} />
       </div>
 
+      <MonthCard solves={solves} runs={runs} today={today} />
+
       {psych.life && (
         <div class="card">
           <div class="label">This week</div>
@@ -197,6 +201,18 @@ function Overview({ solves, runs, pairs }: { solves: SolveRecord[]; runs: PowerR
           value={psych.warm.line}
           sub={`First puzzle about ${formatTime(psych.warm.firstMs)}, then about ${formatTime(psych.warm.restMs)} · ${psych.warm.sessions} breaks`}
           info="Most people take a moment to settle into a task. This compares the first puzzle of each break with the next ones of the same size in that same break."
+        />
+      )}
+
+      {psych.back.count > 0 && (
+        <Insight
+          title="Comebacks"
+          value={`Came back ${psych.back.count} time${psych.back.count === 1 ? '' : 's'} after ${COMEBACK_GAP_DAYS}+ days away`}
+          sub={[
+            psych.back.longestGap && `Longest away: ${psych.back.longestGap.gapDays} days`,
+            psych.back.sharpest && `Sharpest return: ${vsUsualPct(psych.back.sharpest)}% quicker than usual`,
+          ].filter(Boolean).join(' · ')}
+          info="Time away happens. Picking it back up is the part that counts, so it gets counted. A comeback is your first play after 3 or more days off; 'quicker than usual' compares your first puzzle back with your recent typical time for that size."
         />
       )}
 

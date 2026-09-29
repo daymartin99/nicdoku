@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
+import { WelcomeBack } from '../components/WelcomeBack'
 import { power, powerHistory, setPowerMoodAfter, leavePowerDone, runDuration, runMinutes, runMode, type PowerRun } from './state'
 import { progress, restingToday, powerMinutesLeft } from '../state/progress'
 import { MoodTap } from '../components/MoodTap'
@@ -129,6 +130,8 @@ export function PowerDoneScreen() {
           <b class="big-num">{r.bestCombo}</b>
         </div>
       </div>
+
+      <WelcomeBack day={r.day} since={r.startedAt} />
 
       {challengeDone && (
         <div class="card pd-challenge fade-in" role="status">

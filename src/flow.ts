@@ -11,7 +11,7 @@ import {
 } from './state/progress'
 import { theme } from './state/theme'
 import { localDay } from './db'
-import { SESSION_SIZE, sizeForLevel } from './config'
+import { ARCHIVE_PER_DAY, SESSION_SIZE, sizeForLevel } from './config'
 
 export const loading = signal(false)
 
@@ -80,7 +80,7 @@ export function nextPuzzle() {
     if (!s.finishedAt) return launch(playSessionPuzzle)
   }
   clearFinishedGame()
-  go('home')
+  go(mode === 'replay' ? 'archive' : 'home')
 }
 
 export function startDaily() {
@@ -89,6 +89,25 @@ export function startDaily() {
     const spec = dailySpec(day)
     const puzzle = await requestPuzzle(spec.n, dailySeed(day), spec.difficulty)
     startGame({ puzzle, mode: 'daily', level: progress.value.level, themeId: theme.value.id })
+  })
+}
+
+/** Replays of past dailies left today. */
+export function archiveLeft(day = localDay()): number {
+  const pr = progress.value
+  return ARCHIVE_PER_DAY - (pr.archiveDay === day ? pr.archiveUsed ?? 0 : 0)
+}
+
+/** Replay a past daily from the archive (counts against today's replays when it starts). */
+export function startReplay(day: string) {
+  if (archiveLeft() <= 0) return
+  return launch(async () => {
+    const spec = dailySpec(day)
+    const puzzle = await requestPuzzle(spec.n, dailySeed(day), spec.difficulty)
+    const today = localDay()
+    const pr = progress.value
+    patchProgress({ archiveDay: today, archiveUsed: (pr.archiveDay === today ? pr.archiveUsed ?? 0 : 0) + 1 })
+    startGame({ puzzle, mode: 'replay', replayOf: day, level: pr.level, themeId: theme.value.id })
   })
 }
 

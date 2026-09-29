@@ -277,3 +277,10 @@
 .pd-challenge > span:first-child, .pd-ghost > span:first-child { font-size: 28px; }
 .pd-challenge { background: linear-gradient(120deg, #fff 50%, #fff0c2); box-shadow: 0 0 0 2px var(--gold), var(--shadow); }
 .pd-ghost b, .pd-challenge b { color: var(--ink-strong); }
+
+/* ---------- welcome back (first play after 3+ days away) ---------- */
+.welcome-back { display: flex; gap: 12px; align-items: flex-start; background: linear-gradient(120deg, #fff 45%, #e6f6ea); box-shadow: 0 0 0 2px var(--good), var(--shadow); }
+.welcome-back > span:first-child { font-size: 28px; line-height: 1; }
+.welcome-back b { display: block; color: var(--ink-strong); font-size: 17px; margin-bottom: 4px; }
+.welcome-back .wb-line { display: block; font-size: 15px; line-height: 1.35; }
+.power-done .welcome-back { color: var(--ink); }
