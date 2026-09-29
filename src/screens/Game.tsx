@@ -12,7 +12,7 @@ import { Header, Tracker, Rules, Timer } from '../components/Hud'
 import { WinOverlay } from '../components/WinOverlay'
 import { BulbIcon, WandIcon, BroomIcon } from '../components/ToolIcons'
 import { UndoIcon, PencilIcon, ResetIcon, CloseIcon } from '../components/Icons'
-import { PowerDriver, PowerHeader, ComboPill, StageBar, Burst, TimeSlam, Breathe, powerStyle, stageClass } from '../power/PowerHud'
+import { PowerDriver, PowerHeader, ComboPill, StageBar, GhostBar, Burst, TimeSlam, Breathe, powerStyle, stageClass } from '../power/PowerHud'
 import { powerPhase } from '../power/state'
 import { spin, swapPulse } from '../power/spin'
 import '../power/power.css'
@@ -80,6 +80,7 @@ export function GameScreen() {
       {isPower ? <PowerHeader /> : <Header onBack={() => go('home')} onSettings={() => go('settings')} />}
       <Tracker right={isPower ? <ComboPill /> : undefined} />
       {!isPower && <Rules />}
+      {isPower && <GhostBar />}
       {isPower ? <StageBar /> : (
       <div class="game-sub">
         {inSession ? (

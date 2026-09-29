@@ -224,12 +224,17 @@ test('records: two 5-min runs → standing, story and a record book with colours
   // 5× here: a 5-minute run lasts 60 s and the first spin comes at 10 s, so scripted taps never land mid-turn
   await page.evaluate(() => localStorage.setItem('nd:debugPowerScale', '5'))
   await page.reload()
+  // Home offers a weekly challenge from the start (a starter one with no history)
+  await expect(page.locator('.challenge-card')).toContainText('Play a Power run, any length')
 
-  async function fiveMinuteRun() {
+  async function fiveMinuteRun(ghost: 'first' | 'race') {
     await openIntro(page)
     await page.locator('.pi-lengths button', { hasText: /^5/ }).first().click()
     await page.getByRole('button', { name: /Start 5 minutes/ }).click()
     await expect(page.locator('.game-screen.power')).toBeVisible()
+    // the ghost: none on a format's first run, a live race after that
+    if (ghost === 'first') await expect(page.locator('.ghost-bar.first')).toBeVisible()
+    else await expect(page.locator('.ghost-bar:not(.first)')).toContainText('👻')
     await solve(page) // at least one puzzle, with every piece timed
     await expect
       .poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('nd:power') || '{}'))).solves?.length ?? 0, { timeout: 5000 })
@@ -240,8 +245,9 @@ test('records: two 5-min runs → standing, story and a record book with colours
     await expect(page.getByRole('heading', { name: /Power run done/ })).toBeVisible()
   }
 
-  await fiveMinuteRun()
+  await fiveMinuteRun('first')
   await expect(page.locator('.pd-records')).toContainText('Your first 5-min Normal run')
+  await expect(page.locator('.pd-ghost')).toHaveCount(0)
   await expect(page.locator('.pd-story-row').first()).toBeVisible()
   await page.getByRole('button', { name: 'Skip' }).click() // mood
   await page.locator('.power-done .btn').click()
@@ -252,8 +258,9 @@ test('records: two 5-min runs → standing, story and a record book with colours
   })
   await page.goto('/')
 
-  await fiveMinuteRun()
+  await fiveMinuteRun('race')
   await expect(page.locator('.pd-standing')).toContainText(/of 2 in 5-min Normal/)
+  await expect(page.locator('.pd-ghost')).toContainText(/ghost/)
   await page.getByRole('button', { name: 'Skip' }).click()
   await page.locator('.power-done .btn').click()
 

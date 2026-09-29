@@ -16,6 +16,7 @@ import { sickToday, setSickToday, restingToday, powerWaiting, powerMinutesLeft }
 import { MoodTap } from '../components/MoodTap'
 import { saveMood, type MoodValue } from '../mood'
 import './home.css'
+import { ChallengeCard } from '../components/ChallengeCard'
 import '../power/power.css'
 
 const CONFETTI = ['#8E7BDB', '#F7A05E', '#8DD67E', '#F5A2DE', '#A8C8E6', '#FFC53D']
@@ -247,6 +248,8 @@ export function HomeScreen() {
       </button>
       )}
 
+      <ChallengeCard disabled={resting || loading.value || otherGameOpen} />
+
       {!resting && (
         <button class="card power-card" disabled={loading.value || otherGameOpen || !canPower} onClick={() => go('power-intro')}>
           <span class="power-bolt" aria-hidden="true">⚡</span>
@@ -256,7 +259,7 @@ export function HomeScreen() {
               {otherGameOpen
                 ? 'Finish your puzzle first'
                 : powerLeft >= 60
-                  ? '10, 30, 45 or 60 minutes · calm, normal or wild'
+                  ? '5 to 60 minutes · calm, normal or wild'
                   : `${powerLeft} minutes left today · calm, normal or wild`}
             </span>
           </span>

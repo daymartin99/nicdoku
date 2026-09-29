@@ -33,9 +33,7 @@ const GOOD = (r: Rec) =>
 
 function phrase(r: Rec, where: string): { title: string; sub: string } {
   const what = r.label.charAt(0).toLowerCase() + r.label.slice(1)
-  return r.better === 'low'
-    ? { title: `Beat your ${what.replace(/^fastest |^quickest /, (m) => m)} in ${where}`, sub: `${r.display} to beat` }
-    : { title: `Beat your ${what} in ${where}`, sub: `${r.display} to beat` }
+  return { title: `Beat your ${what} in ${where}`, sub: `${r.display} to beat` }
 }
 
 export function pickChallenge(runs: PowerRun[], solves: SolveRecord[], week: string, now: number, salt = ''): Challenge {
@@ -50,7 +48,7 @@ export function pickChallenge(runs: PowerRun[], solves: SolveRecord[], week: str
   }
   if (!candidates.length) {
     return {
-      week, kind: 'starter', key: '10-normal', recId: 'play', title: 'Play a 10-minute Power run',
+      week, kind: 'starter', key: '10-normal', recId: 'play', title: 'Play a Power run, any length',
       sub: 'Your first run becomes the target for next week', target: 1, better: 'high', targetDisplay: '1 run', setAt: now,
     }
   }

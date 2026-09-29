@@ -8,6 +8,8 @@ import { Piece } from '../components/Piece'
 import { MoodTap } from '../components/MoodTap'
 import { saveMood } from '../mood'
 import './home.css'
+import { weekly, refreshWeekly } from '../state/weekly'
+import '../power/power.css'
 
 // Calm, honest closing lines. One is picked per break.
 const MESSAGES = [
@@ -24,6 +26,11 @@ export function SessionDoneScreen() {
   const [mood, setMood] = useState<'ask' | 'thanks' | 'skipped'>('ask')
   useEffect(() => {
     allSolves().then(setSolves).catch(() => {})
+  }, [])
+  // a break can complete a break-based weekly challenge
+  const [challengeDone, setChallengeDone] = useState(false)
+  useEffect(() => {
+    void refreshWeekly().then(setChallengeDone)
   }, [])
   useEffect(() => {
     if (!s) go('home')
@@ -73,6 +80,16 @@ export function SessionDoneScreen() {
           {s.results.length} puzzles · {formatTime(time)} solving
         </p>
       </div>
+
+      {challengeDone && (
+        <div class="card pd-challenge fade-in" role="status">
+          <span aria-hidden="true">🎯</span>
+          <span>
+            <b>Weekly challenge done!</b>
+            <span class="muted"> {weekly.value?.title} · {weekly.value?.done?.display}</span>
+          </span>
+        </div>
+      )}
 
       <div class="card done-stats">
         <div>

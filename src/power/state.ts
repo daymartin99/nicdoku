@@ -16,6 +16,7 @@ import {
   realMs, DURATIONS_MIN, type Stage, type PowerMode,
 } from './timeline'
 import { native, type HrSample } from '../native/bridge'
+import { pickGhost, type Ghost } from './ghost'
 
 export type PowerSolve = {
   /** real ms since the run started */
@@ -71,6 +72,8 @@ export type PowerRun = {
   seen?: boolean
   /** heart rate from her Apple Watch during the hour (native app only); t = ms since start */
   hr?: HrSample[]
+  /** her best run of this format, raced live (null = first run of the format) */
+  ghost?: Ghost | null
 }
 
 /** Dev/test only: speed the hour up (e.g. 60 → one minute). Never set in normal use. */
@@ -195,6 +198,13 @@ export async function startPower(opts: { sound: boolean; moodBefore?: number; mi
     moodBefore: opts.moodBefore,
   }
   save(r)
+  // the ghost: her best run of this format, raced live (loaded in the background)
+  powerHistory()
+    .then((list) => {
+      const cur = power.value
+      if (cur && cur.id === r.id) save({ ...cur, ghost: pickGhost(list, cur) })
+    })
+    .catch(() => {})
   powerPhase.value = 'playing'
   startTicker()
   // the Watch runs its own copy of the clock for haptics and the wrist view

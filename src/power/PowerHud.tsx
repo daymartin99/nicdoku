@@ -6,6 +6,7 @@ import { swapCount } from './palette'
 import { startPowerSound, stopPowerSound, whoosh, finalHit, glitchSting } from './sound'
 import { go } from '../router'
 import { native } from '../native/bridge'
+import { race } from './ghost'
 import { BackIcon } from '../components/Icons'
 
 const fmt = (ms: number) => {
@@ -221,4 +222,38 @@ export function powerStyle(): Record<string, string | number> {
 export function stageClass(): string {
   const r = power.value
   return `stage-${stageAt(powerArc(r, powerNow.value)).stage} mode-${runMode(r)}`
+}
+
+/** Live race against her best run of this format. Flashes when she overtakes. */
+export function GhostBar() {
+  const r = power.value
+  const passedAt = useRef(0)
+  const prevLead = useRef<number | null>(null)
+  if (!r || r.ghost === undefined) return null
+  if (r.ghost === null) {
+    return (
+      <div class="ghost-bar first" aria-label="No ghost yet">
+        <span aria-hidden="true">👻</span> First run of this format: this one becomes your ghost
+      </div>
+    )
+  }
+  const now = powerElapsed(r, powerNow.value)
+  const g = race(r.ghost, r, now)
+  if (prevLead.current !== null && prevLead.current <= 0 && g.lead > 0) passedAt.current = Date.now()
+  prevLead.current = g.lead
+  const flashing = Date.now() - passedAt.current < 1600
+  const status = g.lead > 0 ? `${g.lead} ahead` : g.lead < 0 ? `${-g.lead} behind` : 'level'
+  return (
+    <div
+      class={`ghost-bar${g.lead > 0 ? ' ahead' : g.lead < 0 ? ' behind' : ''}${flashing ? ' passed' : ''}`}
+      role="status"
+      aria-label={`Ghost race: you ${g.you}, ghost ${g.ghost}, ${status}`}
+    >
+      <span class="gb-ghost">
+        <span aria-hidden="true">👻</span> {g.ghost}
+      </span>
+      <span class="gb-you">you {g.you}</span>
+      <span class="gb-lead">{flashing ? 'You passed your ghost!' : status}</span>
+    </div>
+  )
 }

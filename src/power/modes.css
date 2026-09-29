@@ -243,3 +243,37 @@
 .pd-story-tags .tag.boss { background: #ffe0e8; color: #c4455a; }
 .pd-story-tags .tag.combo { background: #fff0c2; color: #a57800; }
 .pd-story-tags .tag.clean { background: #e3f5e7; color: #2f8a48; }
+
+/* ---- ghost race ---- */
+.ghost-bar {
+  display: flex; align-items: center; gap: 10px; min-height: 26px; padding: 0 12px; border-radius: 999px;
+  background: color-mix(in oklab, #ffffff, var(--night, #22112c) calc(var(--pi, 0) * 70%));
+  color: var(--p-ink, var(--ink)); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow);
+}
+.ghost-bar.first { justify-content: center; font-weight: 500; font-size: 13px; opacity: 0.85; }
+.gb-ghost { opacity: 0.75; }
+.gb-lead { margin-left: auto; }
+.ghost-bar.ahead .gb-lead { color: #2f9a52; }
+.ghost-bar.behind .gb-lead { color: #c8702a; }
+.ghost-bar.passed { animation: ghost-pass 1.6s ease both; }
+@keyframes ghost-pass { 0% { box-shadow: 0 0 0 0 rgba(63, 174, 99, 0.7); } 30% { box-shadow: 0 0 0 6px rgba(63, 174, 99, 0.35); } 100% { box-shadow: var(--shadow); } }
+.mode-wild .ghost-bar { background: rgba(10, 0, 25, 0.85); box-shadow: 0 0 0 1.5px rgba(255, 43, 214, 0.5); font-family: ui-monospace, Menlo, monospace; }
+.mode-wild .ghost-bar.ahead .gb-lead { color: #39ff14; }
+.mode-wild .ghost-bar.behind .gb-lead { color: #ffe600; }
+@media (prefers-reduced-motion: reduce) { .ghost-bar.passed { animation: none; } }
+
+/* ---- weekly challenge + ghost verdict ---- */
+.challenge-card { display: flex; align-items: center; gap: 14px; text-align: left; width: 100%; font: inherit; color: inherit;
+  background: linear-gradient(120deg, #fff 60%, #fff3d6); }
+.challenge-card:active { transform: scale(0.98); }
+.challenge-card.done { background: linear-gradient(120deg, #fff 60%, #e3f5e7); }
+.ch-icon { width: 52px; height: 52px; border-radius: 16px; background: #fff0c2; display: grid; place-items: center; font-size: 26px; flex: none; }
+.challenge-card.done .ch-icon { background: #cdebd5; color: #2f8a48; font-weight: 700; }
+.ch-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ch-text b { font-size: 17px; color: var(--ink-strong); line-height: 1.25; }
+.ch-text .muted { font-size: 14px; }
+.pd-challenge, .pd-ghost { display: flex; align-items: center; gap: 12px; font-size: 16px; line-height: 1.35; }
+.pd-challenge > span:first-child, .pd-ghost > span:first-child { font-size: 28px; }
+.pd-challenge { background: linear-gradient(120deg, #fff 50%, #fff0c2); box-shadow: 0 0 0 2px var(--gold), var(--shadow); }
+.pd-ghost b, .pd-challenge b { color: var(--ink-strong); }

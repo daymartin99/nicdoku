@@ -9,6 +9,8 @@ import {
   formatKey, formatLabel, newRecords, newWeeklyRecords, isFirstOfFormat, formatRecords, rankOf, thisWeek, ordinal, formatSecs,
 } from '../stats/records'
 import './power.css'
+import { raceVerdict } from './ghost'
+import { weekly, refreshWeekly } from '../state/weekly'
 import '../components/RecordTable.css'
 
 /** bar colour per twelfth of the run, matching the stages: warm, build, surge, crescendo */
@@ -73,6 +75,14 @@ export function PowerDoneScreen() {
       })
       .catch(() => setFormatRuns([r]))
   }, [r?.id, r?.endedAt])
+  // did this run complete the weekly challenge?
+  const [challengeDone, setChallengeDone] = useState(false)
+  useEffect(() => {
+    if (!r?.endedAt) return
+    // give the finished run a moment to be saved to history first
+    const id = setTimeout(() => void refreshWeekly().then(setChallengeDone), 600)
+    return () => clearTimeout(id)
+  }, [r?.id, r?.endedAt])
   const prev = formatRuns.filter((x) => x.id !== r?.id && x.startedAt < (r?.startedAt ?? 0)).sort((a, b) => b.startedAt - a.startedAt)[0] ?? null
   if (!r) {
     leavePowerDone()
@@ -119,6 +129,26 @@ export function PowerDoneScreen() {
           <b class="big-num">{r.bestCombo}</b>
         </div>
       </div>
+
+      {challengeDone && (
+        <div class="card pd-challenge fade-in" role="status">
+          <span aria-hidden="true">🎯</span>
+          <span>
+            <b>Weekly challenge done!</b>
+            <span class="muted"> {weekly.value?.title} · {weekly.value?.done?.display}</span>
+          </span>
+        </div>
+      )}
+
+      {r.ghost && (
+        <div class="card pd-ghost">
+          <span aria-hidden="true">👻</span>
+          <span>
+            <b>{raceVerdict(r.ghost, r)}</b>
+            <span class="muted"> Raced your best {formatLabel(formatKey(r))} run ({r.ghost.puzzles} puzzles, {r.ghost.score.toLocaleString('en-GB')} pts).</span>
+          </span>
+        </div>
+      )}
 
       {formatRuns.length > 0 && <RecordsCard run={r} formatRuns={formatRuns} />}
 
