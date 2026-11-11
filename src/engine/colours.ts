@@ -19,6 +19,58 @@ function dist(a: [number, number, number], b: [number, number, number]) {
   return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 }
 
+/** Extra colours for boards with more colours than the theme has (Giant dailies). All keep a white X readable. */
+export const EXTRA_COLOURS = [
+  '#3B6FB6', // cobalt
+  '#B5446E', // raspberry
+  '#6B8E23', // olive
+  '#9B59B6', // amethyst
+  '#C0392B', // brick
+  '#1F7A8C', // petrol
+  '#E67E22', // carrot
+  '#5D6D7E', // slate
+  '#8E5A2B', // walnut
+  '#D35D9C', // orchid
+  '#2E86C1', // sky
+  '#45A06A', // fern
+  '#C9A227', // ochre
+  '#7A4FA8', // grape
+]
+
+const wideCache = new Map<string, string[]>()
+
+/** The theme's colours, topped up from EXTRA_COLOURS (most different first) until there are `n`. */
+export function widenPalette(palette: string[], n: number): string[] {
+  if (palette.length >= n) return palette
+  const key = `${n}|${palette.join()}`
+  const hit = wideCache.get(key)
+  if (hit) return hit
+  const out = [...palette]
+  const labs = out.map(hexToLab)
+  const pool = EXTRA_COLOURS.filter((c) => !out.includes(c))
+  while (out.length < n && pool.length) {
+    let best = 0, bestD = -1
+    pool.forEach((c, k) => {
+      const lab = hexToLab(c)
+      const d = Math.min(...labs.map((l) => dist(l, lab)))
+      if (d > bestD) { bestD = d; best = k }
+    })
+    const [c] = pool.splice(best, 1)
+    out.push(c)
+    labs.push(hexToLab(c))
+  }
+  wideCache.set(key, out)
+  return out
+}
+
+/** Smallest perceptual distance between any two colours (tests use it). */
+export function minDistance(palette: string[]): number {
+  let m = Infinity
+  const labs = palette.map(hexToLab)
+  for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) m = Math.min(m, dist(labs[i], labs[j]))
+  return m
+}
+
 const cache = new Map<string, number[]>()
 
 /** Returns colour index for each region id. */

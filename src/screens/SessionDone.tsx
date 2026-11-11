@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { go } from '../router'
-import { progress } from '../state/progress'
+import { progress, dailiesLeft } from '../state/progress'
 import { pieceArt } from '../state/theme'
 import { allSolves, localDay, type SolveRecord } from '../db'
 import { formatTime, median, medianTime } from '../stats/metrics'
@@ -68,7 +68,7 @@ export function SessionDoneScreen() {
 
   const pr = progress.value
   const nextAt = new Date(pr.cooldownUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
-  const dailyWaiting = pr.daily?.day !== localDay()
+  const dailyWaiting = dailiesLeft(localDay())
 
   return (
     <div class="screen session-done fade-in">
@@ -152,7 +152,7 @@ export function SessionDoneScreen() {
 
       <p class="muted done-next">
         Next break from {nextAt}
-        {dailyWaiting && " · Today's daily puzzle is still waiting"}
+        {dailyWaiting > 0 && ` · ${dailyWaiting === 1 ? "One of today's dailies is" : `${dailyWaiting} of today's dailies are`} still waiting`}
       </p>
 
       <button class="btn" onClick={() => go('home')}>

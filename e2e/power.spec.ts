@@ -87,7 +87,7 @@ test('power hour: start → play → spins → TIME. → breathe → results →
   // everything rests until tomorrow, even after a reload
   await expect(page.getByText(/All done for today/)).toBeVisible()
   await expect(page.getByRole('button', { name: /Start a break/ })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Daily puzzle/ })).toHaveCount(0)
+  await expect(page.locator('.daily-card')).toHaveCount(0)
   await page.reload()
   await expect(page.getByText(/All done for today/)).toBeVisible()
   expect(errors).toEqual([])

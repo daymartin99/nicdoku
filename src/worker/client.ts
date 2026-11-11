@@ -2,6 +2,9 @@
 // so a worker failure can never block play.
 
 import type { Difficulty, Puzzle } from '../engine/types'
+import type { PuzzleStyle } from '../engine/generate'
+
+export type ShapeOptions = { style?: PuzzleStyle; maxAttempts?: number }
 
 type Pending = { resolve: (p: Puzzle) => void; reject: (e: unknown) => void }
 
@@ -33,13 +36,13 @@ function getWorker(): Worker | null {
   return worker
 }
 
-async function onMainThread(n: number, seed: string, difficulty?: Difficulty): Promise<Puzzle> {
+async function onMainThread(n: number, seed: string, difficulty?: Difficulty, shape: ShapeOptions = {}): Promise<Puzzle> {
   const { generatePuzzle } = await import('../engine/generate')
-  return generatePuzzle(n, seed, { difficulty })
+  return generatePuzzle(n, seed, { difficulty, ...shape })
 }
 
-export function requestPuzzle(n: number, seed: string, difficulty?: Difficulty): Promise<Puzzle> {
-  const key = `${n}|${seed}|${difficulty ?? ''}`
+export function requestPuzzle(n: number, seed: string, difficulty?: Difficulty, shape: ShapeOptions = {}): Promise<Puzzle> {
+  const key = `${n}|${seed}|${difficulty ?? ''}|${shape.style ?? ''}|${shape.maxAttempts ?? ''}`
   const hit = cache.get(key)
   if (hit) return hit
   const w = getWorker()
@@ -47,16 +50,16 @@ export function requestPuzzle(n: number, seed: string, difficulty?: Difficulty):
     ? new Promise<Puzzle>((resolve, reject) => {
         const id = nextId++
         pending.set(id, { resolve, reject })
-        w.postMessage({ id, n, seed, difficulty })
+        w.postMessage({ id, n, seed, opts: { difficulty, ...shape } })
         setTimeout(() => {
           if (pending.has(id)) {
             pending.delete(id)
             reject(new Error('timeout'))
           }
-        }, 6000)
+        }, 10000)
       })
     : Promise.reject(new Error('no worker'))
-  const p = viaWorker.catch(() => onMainThread(n, seed, difficulty))
+  const p = viaWorker.catch(() => onMainThread(n, seed, difficulty, shape))
   cache.set(key, p)
   p.catch(() => cache.delete(key))
   return p

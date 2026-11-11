@@ -3,6 +3,7 @@
 
 import { openDB, type IDBPDatabase } from 'idb'
 import type { Difficulty } from './engine/types'
+import type { DailyKind, DailySlot } from './dailies'
 
 export type SolveRecord = {
   id?: number
@@ -29,6 +30,9 @@ export type SolveRecord = {
   picks?: { t: number; c: string; h?: boolean }[]
   /** a replay of this day's daily puzzle (saved as 'extra', so never counted in stats) */
   replayOf?: string
+  /** which of the day's dailies (daily solves and their replays; none = the old single daily) */
+  dailySlot?: DailySlot
+  dailyKind?: DailyKind
 }
 
 let dbp: Promise<IDBPDatabase> | null = null

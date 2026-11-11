@@ -7,7 +7,8 @@ import { LIVES, SESSION_SIZE } from '../config'
 import { M_EMPTY, M_PIECE, M_WRONG, M_X, computeHint, tidyCells, type Hint } from '../engine/hints'
 import type { Puzzle } from '../engine/types'
 import { settings } from './settings'
-import { progress, patchProgress, finishSession, type SessionResult } from './progress'
+import { progress, patchProgress, finishSession, recordDaily, type SessionResult } from './progress'
+import { slotOf, type DailyKind, type DailySlot } from '../dailies'
 import { medianTime, fasterThanPct, isNewPB } from '../stats/metrics'
 import { feedback } from '../feedback'
 import { replayLine } from '../stats/archive'
@@ -45,6 +46,9 @@ export type GameState = {
   sessionId?: string
   /** replaying this day's daily from the archive */
   replayOf?: string
+  /** daily and replay: which of the day's dailies (none = the old single daily) */
+  dailySlot?: DailySlot
+  dailyKind?: DailyKind
   themeId: string
   marks: number[]
   /** pencil layer (0 none, 1 X, 2 piece) or null when pencil is off */
@@ -190,6 +194,8 @@ export function startGame(p: {
   level: number
   sessionId?: string
   replayOf?: string
+  dailySlot?: DailySlot
+  dailyKind?: DailyKind
   themeId: string
 }) {
   const g: GameState = {
@@ -538,6 +544,7 @@ async function checkWin() {
     day: localDay(),
     mode: g.mode === 'replay' ? 'extra' : g.mode,
     ...(isReplay ? { replayOf: g.replayOf } : {}),
+    ...(g.mode === 'daily' || isReplay ? { dailySlot: slotOf(g), ...(g.dailyKind ? { dailyKind: g.dailyKind } : {}) } : {}),
     sessionId: g.sessionId,
     level: g.level,
     n: g.puzzle.n,
@@ -558,8 +565,9 @@ async function checkWin() {
   const fasterPct = rec.mode !== 'extra' ? fasterThanPct(counted, rec) : null
   let replay: string | undefined
   if (isReplay) {
-    const onDay = history.find((s) => s.mode === 'daily' && s.day === g.replayOf)
-    const prev = history.filter((s) => s.replayOf === g.replayOf).map((s) => s.timeMs)
+    const slot = slotOf(g)
+    const onDay = history.find((s) => s.mode === 'daily' && s.day === g.replayOf && slotOf(s) === slot)
+    const prev = history.filter((s) => s.replayOf === g.replayOf && slotOf(s) === slot).map((s) => s.timeMs)
     replay = replayLine(timeMs, onDay?.timeMs ?? null, prev.length ? Math.min(...prev) : null)
   }
 
@@ -577,7 +585,7 @@ async function checkWin() {
     // the break ends at the real solve time, not whenever she taps "Finish break"
     if (pr.session.index + 1 >= SESSION_SIZE && !pr.session.finishedAt) finishSession()
   } else if (g.mode === 'daily') {
-    patchProgress({ daily: { day: localDay(), timeMs, clean, score }, totalScore: pr.totalScore + score })
+    recordDaily(slotOf(g), { timeMs, clean, score })
   } else if (!isReplay) {
     patchProgress({ extrasUsed: pr.extrasUsed + 1 })
   }

@@ -4,6 +4,8 @@ import { PALETTES } from '../themes/palettes'
 import { swapCountAt, type PowerMode } from './timeline'
 import { power, runMode, powerArc, powerNow } from './state'
 import { makeRng } from '../engine/rng'
+import { widenPalette } from '../engine/colours'
+import type { DailyKind } from '../dailies'
 import type { PieceArt } from '../themes/types'
 
 /** Neon for wild mode: bright on near-black. X marks switch to dark ink on these (see power.css). */
@@ -62,4 +64,10 @@ export function livePalette(isPower: boolean, themePalette: string[]): string[] 
   const mode = isPower ? boardMode.value : null
   const base = powerPalette(mode, themePalette)
   return mode === 'wild' ? swapPalette(base, swapCount.value, power.value?.id ?? '') : base
+}
+
+/** Every board's colours: Power modes, soft pastels for the Calm daily, topped up for Giant boards. */
+export function gamePalette(g: { mode: string; dailyKind?: DailyKind; puzzle: { n: number } }, themePalette: string[]): string[] {
+  const base = g.dailyKind === 'calm' ? (PALETTES.pastel ?? themePalette) : livePalette(g.mode === 'power', themePalette)
+  return widenPalette(base, g.puzzle.n)
 }

@@ -10,7 +10,7 @@ import { unlockAudio, feedback } from '../feedback'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
 import { unspinPoint } from '../power/spin'
-import { boardMode, livePalette, powerPiece } from '../power/palette'
+import { boardMode, gamePalette, powerPiece } from '../power/palette'
 
 const X_PATH = 'M4.7 4.7l14.6 14.6M19.3 4.7 4.7 19.3'
 
@@ -51,7 +51,7 @@ export function Board() {
   const [pressed, setPressed] = useState(-1)
   if (!g) return null
   const { n, regions } = g.puzzle
-  const palette = livePalette(g.mode === 'power', theme.value.palette)
+  const palette = gamePalette(g, theme.value.palette)
   const colourOf = assignColours(n, regions, palette)
   // lets the game note which colour each piece showed when it was found (for colour records)
   colourHooks.colourAt = (cell) => palette[colourOf[regions[cell]]]

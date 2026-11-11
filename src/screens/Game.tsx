@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { go } from '../router'
+import { KIND_INFO } from '../dailies'
 import {
   game, win, activeHint, status, flash, showHint, applyHint, revealPiece, tidyUp, undo, togglePencil, applyDrafts,
   resetBoard, resumeClock, pauseClock,
@@ -93,9 +94,9 @@ export function GameScreen() {
         ) : (
           <span class="mode-chip">
             {g.mode === 'daily'
-              ? 'Daily puzzle'
+              ? `${KIND_INFO[g.dailyKind ?? 'classic'].title} daily`
               : g.mode === 'replay' && g.replayOf
-                ? `Daily from ${shortDay(g.replayOf)} · not counted`
+                ? `${KIND_INFO[g.dailyKind ?? 'classic'].title} daily from ${shortDay(g.replayOf)} · not counted`
                 : 'Bonus puzzle · not counted'}
           </span>
         )}

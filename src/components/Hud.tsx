@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import type { ComponentChildren } from 'preact'
+import { KIND_INFO } from '../dailies'
 import { LIVES } from '../config'
 import { game, elapsed, solvedRegions } from '../state/game'
 import { progress } from '../state/progress'
@@ -9,13 +10,13 @@ import { formatTime } from '../stats/metrics'
 import { BackIcon, GearIcon, CloseIcon } from './Icons'
 import { Piece } from './Piece'
 import { assignColours } from '../engine/colours'
-import { boardMode, livePalette, powerPiece } from '../power/palette'
+import { boardMode, gamePalette, powerPiece } from '../power/palette'
 
 export function Header({ onBack, onSettings }: { onBack: () => void; onSettings: () => void }) {
   const g = game.value!
   const pr = progress.value
   const label = g.mode === 'daily' ? 'Daily' : g.mode === 'extra' ? 'Bonus' : g.mode === 'replay' ? 'Replay' : 'Level'
-  const value = g.mode === 'daily' ? '★' : g.mode === 'extra' ? '+1' : g.mode === 'replay' ? '↺' : String(g.level)
+  const value = g.mode === 'daily' ? KIND_INFO[g.dailyKind ?? 'classic'].icon : g.mode === 'extra' ? '+1' : g.mode === 'replay' ? '↺' : String(g.level)
   return (
     <div class="topbar game-top">
       <button class="round-btn" onClick={onBack} aria-label="Back">
@@ -40,7 +41,7 @@ export function Header({ onBack, onSettings }: { onBack: () => void; onSettings:
 /** `right` replaces the lives pill (Power Hour shows its combo there). */
 export function Tracker({ right }: { right?: ComponentChildren } = {}) {
   const g = game.value!
-  const palette = livePalette(g.mode === 'power', theme.value.palette)
+  const palette = gamePalette(g, theme.value.palette)
   const solved = solvedRegions.value
   const n = g.puzzle.n
   const colourOf = assignColours(n, g.puzzle.regions, palette)

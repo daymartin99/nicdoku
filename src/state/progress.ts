@@ -4,6 +4,7 @@ import { COOLDOWN_MIN, SICK_COOLDOWN_MIN, SESSION_SIZE, sizeForLevel, GENERATOR_
 import type { Difficulty } from '../engine/types'
 import { native } from '../native/bridge'
 import { DAILY_POWER_MIN } from '../power/timeline'
+import { dailyLineup, type DailySlot } from '../dailies'
 
 export type SessionResult = {
   level: number
@@ -35,7 +36,10 @@ export type Progress = {
   skill: number
   cooldownUntil: number
   extrasUsed: number
+  /** the single daily from before there were three (still read for today, never written) */
   daily: { day: string; timeMs: number; clean: boolean; score: number } | null
+  /** today's three dailies (Calm, Wild, Wildcard) */
+  dailies?: { day: string; done: Partial<Record<DailySlot, DailyResult>> } | null
   session: Session | null
   /** random salt so puzzles aren't the same as anyone else running the code */
   salt: string
@@ -95,23 +99,27 @@ export function sessionSeed(pr: Progress, level: number) {
   return `nicdoku:${GENERATOR_VERSION}:${pr.salt}:L${level}`
 }
 
-export function dailySeed(day = localDay()) {
-  return `nicdoku:${GENERATOR_VERSION}:daily:${day}`
+export type DailyResult = { timeMs: number; clean: boolean; score: number }
+
+/** Today's result for one of the dailies (null = not solved yet). */
+export function dailyResult(slot: DailySlot, day = localDay()): DailyResult | null {
+  const pr = progress.value
+  const d = pr.dailies?.day === day ? pr.dailies.done[slot] : undefined
+  if (d) return d
+  // solved before the update: the old single daily is today's Wildcard slot
+  if (slot === 'special' && pr.daily?.day === day) return pr.daily
+  return null
 }
 
-/** Daily puzzle: size and difficulty vary through the week (Mon easy → Sun big). */
-export function dailySpec(day = localDay()): { n: number; difficulty: Difficulty } {
-  const dow = new Date(day + 'T12:00:00').getDay() // 0 Sun
-  const table: { n: number; difficulty: Difficulty }[] = [
-    { n: 10, difficulty: 'expert' }, // Sun
-    { n: 8, difficulty: 'easy' },
-    { n: 8, difficulty: 'medium' },
-    { n: 9, difficulty: 'medium' },
-    { n: 9, difficulty: 'hard' },
-    { n: 9, difficulty: 'hard' },
-    { n: 10, difficulty: 'hard' }, // Sat
-  ]
-  return table[dow]
+/** How many of today's dailies are still waiting. */
+export function dailiesLeft(day = localDay()): number {
+  return dailyLineup(day).filter((p) => !dailyResult(p.slot, day)).length
+}
+
+export function recordDaily(slot: DailySlot, r: DailyResult, day = localDay()) {
+  const pr = progress.value
+  const done = pr.dailies?.day === day ? pr.dailies.done : {}
+  patchProgress({ dailies: { day, done: { ...done, [slot]: r } }, totalScore: pr.totalScore + r.score })
 }
 
 export function startSession(): Session {

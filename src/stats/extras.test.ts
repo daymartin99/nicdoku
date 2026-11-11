@@ -5,7 +5,7 @@ import { archiveDays, replayLine } from './archive'
 import { comebacks, comebackStats, gapBefore, welcomeBack } from './comeback'
 import { monthSummary, monthsPlayed, prevMonth } from './monthly'
 
-const spec = () => ({ n: 9, difficulty: 'medium' as const })
+const spec = () => [{ slot: 'special' as const, kind: 'classic' as const, n: 9, difficulty: 'medium' as const }]
 
 function solve(day: string, over: Partial<SolveRecord> = {}): SolveRecord {
   return {
@@ -35,10 +35,26 @@ describe('daily archive', () => {
     ]
     const days = archiveDays(solves, '2026-09-29', spec, 5)
     expect(days.map((d) => d.day)).toEqual(['2026-09-28', '2026-09-27', '2026-09-26', '2026-09-25', '2026-09-24'])
-    expect(days[1].onDay?.timeMs).toBe(120_000)
-    expect(days[1].bestReplay?.timeMs).toBe(90_000)
-    expect(days[1].replays).toBe(2)
-    expect(days[0].onDay).toBeNull()
+    expect(days[1].entries[0].onDay?.timeMs).toBe(120_000)
+    expect(days[1].entries[0].bestReplay?.timeMs).toBe(90_000)
+    expect(days[1].entries[0].replays).toBe(2)
+    expect(days[0].entries[0].onDay).toBeNull()
+  })
+
+  it('keeps each of the three dailies apart', () => {
+    const trio = () => [
+      { slot: 'calm' as const, kind: 'calm' as const, n: 8, difficulty: 'easy' as const },
+      { slot: 'wild' as const, kind: 'wild' as const, n: 9, difficulty: 'hard' as const },
+      { slot: 'special' as const, kind: 'giant' as const, n: 13, difficulty: 'hard' as const },
+    ]
+    const solves = [
+      solve('2026-12-01', { mode: 'daily', dailySlot: 'wild', timeMs: 200_000 }),
+      solve('2026-12-01', { mode: 'daily', dailySlot: 'special', timeMs: 400_000 }),
+      solve('2026-12-02', { mode: 'extra', replayOf: '2026-12-01', dailySlot: 'calm', timeMs: 70_000 }),
+    ]
+    const [d] = archiveDays(solves, '2026-12-02', trio, 1)
+    expect(d.entries.map((e) => e.onDay?.timeMs ?? null)).toEqual([null, 200_000, 400_000])
+    expect(d.entries.map((e) => e.replays)).toEqual([1, 0, 0])
   })
 
   it('says how a replay compares with the day, honestly', () => {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import { go } from '../router'
 import { game } from '../state/game'
-import { dailySpec, restingToday, powerWaiting } from '../state/progress'
+import { restingToday, powerWaiting } from '../state/progress'
+import { dailyLineup, KIND_INFO } from '../dailies'
 import { startReplay, archiveLeft, continueGame, loading } from '../flow'
 import { allSolves, localDay, type SolveRecord } from '../db'
 import { archiveDays, shortDay } from '../stats/archive'
@@ -22,7 +23,7 @@ export function ArchiveScreen() {
   const resting = restingToday(today) || powerWaiting()
   const g = game.value
   const open = !!g && !g.done && g.mode !== 'power'
-  const days = solves ? archiveDays(solves, today, dailySpec, ARCHIVE_DAYS) : []
+  const days = solves ? archiveDays(solves, today, dailyLineup, ARCHIVE_DAYS) : []
 
   return (
     <div class="screen archive fade-in">
@@ -56,34 +57,44 @@ export function ArchiveScreen() {
         {days.map((d) => {
           const can = !resting && !open && left > 0 && !loading.value
           return (
-            <li key={d.day} class="card archive-row">
-              <span class="ar-date">
-                <b>{shortDay(d.day)}</b>
-                <span class="muted">
-                  {d.n}×{d.n} · {d.difficulty}
-                </span>
-              </span>
-              <span class="ar-times">
-                {d.onDay ? (
-                  <span>On the day <b>{formatTime(d.onDay.timeMs)}</b></span>
-                ) : (
-                  <span class="muted">Missed</span>
-                )}
-                {d.bestReplay && (
-                  <span class="ar-replay">
-                    Replay <b>{formatTime(d.bestReplay.timeMs)}</b>
-                    {d.onDay && d.bestReplay.timeMs < d.onDay.timeMs ? ' ↑' : ''}
-                  </span>
-                )}
-              </span>
-              <button
-                class="ar-play"
-                disabled={!can}
-                onClick={() => void startReplay(d.day)}
-                aria-label={`${d.onDay ? 'Replay' : 'Play'} the daily from ${shortDay(d.day)}`}
-              >
-                {d.onDay || d.bestReplay ? '↺' : '▶'}
-              </button>
+            <li key={d.day} class="card archive-day">
+              <b class="ad-date">{shortDay(d.day)}</b>
+              {d.entries.map((e) => {
+                const info = KIND_INFO[e.kind]
+                return (
+                  <div key={e.slot} class="archive-row">
+                    <span class="ar-date">
+                      <b>
+                        <span aria-hidden="true">{info.icon}</span> {info.title}
+                      </b>
+                      <span class="muted">
+                        {e.n}×{e.n} · {e.difficulty}
+                      </span>
+                    </span>
+                    <span class="ar-times">
+                      {e.onDay ? (
+                        <span>On the day <b>{formatTime(e.onDay.timeMs)}</b></span>
+                      ) : (
+                        <span class="muted">Missed</span>
+                      )}
+                      {e.bestReplay && (
+                        <span class="ar-replay">
+                          Replay <b>{formatTime(e.bestReplay.timeMs)}</b>
+                          {e.onDay && e.bestReplay.timeMs < e.onDay.timeMs ? ' ↑' : ''}
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      class="ar-play"
+                      disabled={!can}
+                      onClick={() => void startReplay(d.day, e.slot)}
+                      aria-label={`${e.onDay ? 'Replay' : 'Play'} the ${info.title} daily from ${shortDay(d.day)}`}
+                    >
+                      {e.onDay || e.bestReplay ? '↺' : '▶'}
+                    </button>
+                  </div>
+                )
+              })}
             </li>
           )
         })}

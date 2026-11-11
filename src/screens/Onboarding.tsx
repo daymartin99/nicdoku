@@ -57,7 +57,7 @@ export function OnboardingScreen() {
           <ul class="ob-list">
             <li><b>A break = 5 puzzles</b>, warm-up to a tricky one. About 10 minutes.</li>
             <li><b>Then it rests for an hour</b>, so it stays a break and doesn't turn into a scroll.</li>
-            <li><b>The daily puzzle</b> is always there, same one all day.</li>
+            <li><b>Three dailies</b> every day: Calm, Wild and a wildcard (Giant, Mini, Stripes…). Same ones all day.</li>
             <li><b>Every hint is free.</b> Mistakes cost a heart, but you can always finish.</li>
             <li><b>The theme changes</b> with the calendar, birthdays included.</li>
           </ul>

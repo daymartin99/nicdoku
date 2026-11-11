@@ -5,12 +5,13 @@ import { requestPuzzle } from './worker/client'
 import { go } from './router'
 import { startGame, clearFinishedGame, game } from './state/game'
 import {
-  progress, patchProgress, startSession, finishSession, sessionSeed, dailySeed, dailySpec, planSession,
+  progress, patchProgress, startSession, finishSession, sessionSeed, planSession, dailyResult,
   restingToday,
   powerWaiting,
 } from './state/progress'
 import { theme } from './state/theme'
 import { localDay } from './db'
+import { dailyPlan, dailyLineup, type DailyPlan, type DailySlot } from './dailies'
 import { ARCHIVE_PER_DAY, SESSION_SIZE, sizeForLevel } from './config'
 
 export const loading = signal(false)
@@ -83,12 +84,17 @@ export function nextPuzzle() {
   go(mode === 'replay' ? 'archive' : 'home')
 }
 
-export function startDaily() {
+function fetchDaily(plan: DailyPlan) {
+  return requestPuzzle(plan.n, plan.seed, plan.difficulty, { style: plan.style, maxAttempts: plan.maxAttempts })
+}
+
+export function startDaily(slot: DailySlot) {
   return launch(async () => {
-    const day = localDay()
-    const spec = dailySpec(day)
-    const puzzle = await requestPuzzle(spec.n, dailySeed(day), spec.difficulty)
-    startGame({ puzzle, mode: 'daily', level: progress.value.level, themeId: theme.value.id })
+    const plan = dailyPlan(localDay(), slot)
+    const puzzle = await fetchDaily(plan)
+    startGame({
+      puzzle, mode: 'daily', dailySlot: slot, dailyKind: plan.kind, level: progress.value.level, themeId: theme.value.id,
+    })
   })
 }
 
@@ -99,15 +105,17 @@ export function archiveLeft(day = localDay()): number {
 }
 
 /** Replay a past daily from the archive (counts against today's replays when it starts). */
-export function startReplay(day: string) {
+export function startReplay(day: string, slot: DailySlot = 'special') {
   if (archiveLeft() <= 0) return
   return launch(async () => {
-    const spec = dailySpec(day)
-    const puzzle = await requestPuzzle(spec.n, dailySeed(day), spec.difficulty)
+    const plan = dailyPlan(day, slot)
+    const puzzle = await fetchDaily(plan)
     const today = localDay()
     const pr = progress.value
     patchProgress({ archiveDay: today, archiveUsed: (pr.archiveDay === today ? pr.archiveUsed ?? 0 : 0) + 1 })
-    startGame({ puzzle, mode: 'replay', replayOf: day, level: pr.level, themeId: theme.value.id })
+    startGame({
+      puzzle, mode: 'replay', replayOf: day, dailySlot: slot, dailyKind: plan.kind, level: pr.level, themeId: theme.value.id,
+    })
   })
 }
 
@@ -132,8 +140,10 @@ export function warmUp() {
   const idx = pr.session && !pr.session.finishedAt ? pr.session.index : 0
   const level = pr.session && !pr.session.finishedAt ? pr.session.levelAtStart + idx : pr.level
   if (plan[idx]) requestPuzzle(plan[idx].n, sessionSeed(pr, level), plan[idx].difficulty).catch(() => {})
-  const spec = dailySpec()
-  if (pr.daily?.day !== localDay()) requestPuzzle(spec.n, dailySeed(), spec.difficulty).catch(() => {})
+  const today = localDay()
+  for (const plan of dailyLineup(today)) {
+    if (!dailyResult(plan.slot, today)) fetchDaily(plan).catch(() => {})
+  }
 }
 
 export function setStartLevel(level: number) {

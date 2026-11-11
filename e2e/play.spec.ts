@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-type Saved = { puzzle: { n: number; solution: number[] }; marks: number[]; done: boolean }
+type Saved = { puzzle: { n: number; solution: number[] }; marks: number[]; done: boolean; dailySlot?: string }
 
 async function skipOnboarding(page: Page, level = 135) {
   await page.goto('/')
@@ -178,19 +178,40 @@ test('stress: random taps, drags, undo, hints, then solve — no errors', async 
   expect(errors).toEqual([])
 })
 
-test('daily puzzle is identical on a fresh device', async ({ page, browser }) => {
+test('each daily is identical on a fresh device', async ({ page, browser }) => {
   await skipOnboarding(page)
-  await page.getByRole('button', { name: /Daily puzzle/ }).click()
+  await expect(page.locator('.daily-card')).toHaveCount(3)
+  await page.getByRole('button', { name: /^Wild/ }).click()
   await expect(page.locator('.board')).toBeVisible()
   const a = await current(page)
+  expect(a.dailySlot).toBe('wild')
   const ctx = await browser.newContext({ baseURL: 'http://localhost:4174' })
   const p2 = await ctx.newPage()
   await skipOnboarding(p2, 7)
-  await p2.getByRole('button', { name: /Daily puzzle/ }).click()
+  await p2.getByRole('button', { name: /^Wild/ }).click()
   await expect(p2.locator('.board')).toBeVisible()
   const b = await current(p2)
   expect(b.puzzle).toEqual(a.puzzle)
   await ctx.close()
+})
+
+test('three dailies: solving one leaves the other two, and an open one carries on from its card', async ({ page }) => {
+  await skipOnboarding(page)
+  await expect(page.getByText('3 to play')).toBeVisible()
+  await page.getByRole('button', { name: /^Calm/ }).click()
+  await expect(page.locator('.mode-chip')).toContainText('Calm daily')
+  const calm = await current(page)
+  expect(calm.puzzle.n).toBe(8)
+  // leave it half-done: the other dailies wait, Calm's own card carries on
+  await page.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByRole('button', { name: /^Calm.*Tap to carry on/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Wild/ })).toBeDisabled()
+  await page.getByRole('button', { name: /^Calm/ }).click()
+  await solveCurrent(page)
+  await page.locator('.win-btn.ready').click()
+  await expect(page.getByText('2 to play')).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Calm.*Solved in/ })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /^Wild/ })).toBeEnabled()
 })
 
 test('start again: a tap does nothing, a 2-second hold wipes progress but keeps family', async ({ page }) => {
@@ -281,18 +302,19 @@ test('past dailies: replay yesterday, race the day, never counted; month card an
   await page.reload()
   await page.getByRole('button', { name: /Past dailies · 2 replays left today/ }).click()
   await expect(page.getByText('2 of 2 replays left today')).toBeVisible()
-  const row = page.locator('.archive-row').first()
-  await expect(row).toContainText('On the day 10:00')
+  // yesterday's old-style daily sits in the wildcard row
+  const row = page.locator('.archive-row', { hasText: 'On the day 10:00' })
+  await expect(row).toHaveCount(1)
 
   await row.locator('.ar-play').click()
-  await expect(page.locator('.mode-chip')).toContainText(/Daily from .* · not counted/)
+  await expect(page.locator('.mode-chip')).toContainText(/daily from .* · not counted/)
   await solveCurrent(page)
   await expect(page.locator('.win-line')).toContainText(/faster than on the day \(10:00\)/)
   await page.locator('.win-btn.ready').click()
 
   // straight back to the archive, one replay used, replay time shown
   await expect(page.getByText('1 of 2 replays left today')).toBeVisible()
-  await expect(page.locator('.archive-row').first()).toContainText(/Replay \d+:\d\d ↑/)
+  await expect(page.locator('.archive-row', { hasText: 'On the day 10:00' })).toContainText(/Replay \d+:\d\d ↑/)
 
   // stats: the replay isn't a PB or counted time; the month card and comeback show
   await page.getByRole('button', { name: 'Back' }).click()

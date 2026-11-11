@@ -126,3 +126,17 @@
 
 /* next family date on an ordinary day: gentle, not shouty */
 .countdown.soon { color: var(--ink); font-weight: 600; }
+
+/* three dailies: Calm, Wild and the day's wildcard */
+.dailies { display: flex; flex-direction: column; gap: 8px; }
+.dailies-head { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 4px 0; font-size: 18px; color: var(--ink-strong); }
+.dailies-head .muted { font-size: 15px; font-weight: 500; }
+.dailies .daily-card { padding-top: 12px; padding-bottom: 12px; }
+.dailies .daily-star { width: 46px; height: 46px; font-size: 26px; }
+.daily-text b { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.daily-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #fff0c2; color: #a57800; }
+.daily-calm .daily-star { background: #e3f3e6; }
+.daily-wild .daily-star { background: #f1e3fb; }
+.daily-giant .daily-star { background: #e3ecfb; }
+.daily-mini .daily-star { background: #fde7ef; }
+.daily-stripes .daily-star { background: #eeeeee; }

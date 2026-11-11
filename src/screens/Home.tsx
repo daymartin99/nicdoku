@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'preact/hooks'
 import { go } from '../router'
 import { game } from '../state/game'
-import { progress, inCooldown } from '../state/progress'
+import { progress, inCooldown, dailyResult, dailiesLeft } from '../state/progress'
+import { dailyLineup, slotOf, KIND_INFO } from '../dailies'
 import { settings } from '../state/settings'
 import { resolved, theme, pieceArt, nextPersonal } from '../state/theme'
 import { startBreak, startDaily, startExtra, continueGame, loading, warmUp, archiveLeft } from '../flow'
@@ -101,7 +102,8 @@ export function HomeScreen() {
   const today = localDay()
   const cooling = inCooldown(now)
   const sessionOpen = pr.session && !pr.session.finishedAt
-  const dailyDone = pr.daily?.day === today
+  const lineup = dailyLineup(today)
+  const dailiesWaiting = dailiesLeft(today)
   const otherGameOpen = !!g && !g.done && g.mode !== 'daily'
   const st = solves && solves.length > 0 ? streak(solves, today) : null
   const head = solves ? headline(solves, today) : ''
@@ -199,7 +201,7 @@ export function HomeScreen() {
           Continue puzzle
           <small>
             {g.mode === 'daily'
-              ? 'Daily puzzle'
+              ? `${KIND_INFO[g.dailyKind ?? 'classic'].title} daily`
               : g.mode === 'replay'
                 ? 'Past daily'
                 : `Level ${g.level} · ${g.puzzle.n}×${g.puzzle.n}`}
@@ -231,27 +233,48 @@ export function HomeScreen() {
       )}
 
       {!resting && (
-      <button
-        class={`card daily-card${dailyDone ? ' done' : ''}`}
-        disabled={loading.value || dailyDone || otherGameOpen}
-        onClick={startDaily}
-      >
-        <span class="daily-star">★</span>
-        <span class="daily-text">
-          <b>Daily puzzle</b>
-          <span class="muted">
-            {dailyDone ? (
-              <>
-                Solved in {formatTime(pr.daily!.timeMs)} <Tick />
-              </>
-            ) : otherGameOpen ? (
-              'Finish your puzzle first'
-            ) : (
-              'Same puzzle all day · tap to play'
-            )}
-          </span>
-        </span>
-      </button>
+        <section class="dailies" aria-label="Today's dailies">
+          <h2 class="dailies-head">
+            Today's dailies
+            <span class="muted">{dailiesWaiting ? `${dailiesWaiting} to play` : 'All done'}</span>
+          </h2>
+          {lineup.map((plan) => {
+            const info = KIND_INFO[plan.kind]
+            const done = dailyResult(plan.slot, today)
+            // an unfinished daily: its own card carries on with it, the others wait
+            const mine = !!g && !g.done && g.mode === 'daily' && slotOf(g) === plan.slot
+            const blocked = !!g && !g.done && g.mode !== 'power' && !mine
+            return (
+              <button
+                key={plan.slot}
+                class={`card daily-card daily-${plan.kind}${done ? ' done' : ''}`}
+                disabled={loading.value || !!done || blocked}
+                onClick={() => (mine ? continueGame() : void startDaily(plan.slot))}
+              >
+                <span class="daily-star" aria-hidden="true">{info.icon}</span>
+                <span class="daily-text">
+                  <b>
+                    {info.title}
+                    {plan.slot === 'special' && <span class="daily-tag">Today's wildcard</span>}
+                  </b>
+                  <span class="muted">
+                    {done ? (
+                      <>
+                        Solved in {formatTime(done.timeMs)} <Tick />
+                      </>
+                    ) : mine ? (
+                      'Tap to carry on'
+                    ) : blocked ? (
+                      'Finish your puzzle first'
+                    ) : (
+                      `${plan.n}×${plan.n} · ${info.blurb}`
+                    )}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </section>
       )}
       {!resting && (
         <button class="link-btn archive-link" onClick={() => go('archive')}>

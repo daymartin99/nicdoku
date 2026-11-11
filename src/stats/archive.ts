@@ -5,9 +5,11 @@
 import type { SolveRecord } from '../db'
 import type { Difficulty } from '../engine/types'
 import { addDays, formatTime } from './metrics'
+import { slotOf, type DailyKind, type DailyPlan, type DailySlot } from '../dailies'
 
-export type ArchiveDay = {
-  day: string
+export type ArchiveEntry = {
+  slot: DailySlot
+  kind: DailyKind
   n: number
   difficulty: Difficulty
   /** her daily solve on the day itself (null = missed) */
@@ -17,20 +19,25 @@ export type ArchiveDay = {
   replays: number
 }
 
-/** The last `days` dailies before today, newest first. */
+export type ArchiveDay = { day: string; entries: ArchiveEntry[] }
+
+/** The last `days` days of dailies before today, newest first (three a day from TRIO_FROM). */
 export function archiveDays(
   solves: SolveRecord[],
   today: string,
-  spec: (day: string) => { n: number; difficulty: Difficulty },
+  lineup: (day: string) => Pick<DailyPlan, 'slot' | 'kind' | 'n' | 'difficulty'>[],
   days = 28,
 ): ArchiveDay[] {
   const out: ArchiveDay[] = []
   for (let k = 1; k <= days; k++) {
     const day = addDays(today, -k)
-    const onDay = solves.find((s) => s.mode === 'daily' && s.day === day) ?? null
-    const replays = solves.filter((s) => s.replayOf === day)
-    const bestReplay = replays.reduce<SolveRecord | null>((b, s) => (!b || s.timeMs < b.timeMs ? s : b), null)
-    out.push({ day, ...spec(day), onDay, bestReplay, replays: replays.length })
+    const entries = lineup(day).map(({ slot, kind, n, difficulty }) => {
+      const onDay = solves.find((s) => s.mode === 'daily' && s.day === day && slotOf(s) === slot) ?? null
+      const replays = solves.filter((s) => s.replayOf === day && slotOf(s) === slot)
+      const bestReplay = replays.reduce<SolveRecord | null>((b, s) => (!b || s.timeMs < b.timeMs ? s : b), null)
+      return { slot, kind, n, difficulty, onDay, bestReplay, replays: replays.length }
+    })
+    out.push({ day, entries })
   }
   return out
 }
