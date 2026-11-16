@@ -3,6 +3,7 @@ import { go } from '../router'
 import { game } from '../state/game'
 import { progress, inCooldown, dailyResult, dailiesLeft } from '../state/progress'
 import { dailyLineup, slotOf, KIND_INFO } from '../dailies'
+import { dailyShareText, shareText, shareNote } from '../share'
 import { settings } from '../state/settings'
 import { resolved, theme, pieceArt, nextPersonal } from '../state/theme'
 import { startBreak, startDaily, startExtra, continueGame, loading, warmUp, archiveLeft } from '../flow'
@@ -126,6 +127,13 @@ export function HomeScreen() {
     const id = progress.value.session?.id
     if (v && id) void saveMood({ kind: 'break', ref: id, when: 'before', v })
   }
+  const [shareMsg, setShareMsg] = useState('')
+  const onShare = async () => {
+    setShareMsg('')
+    const note = shareNote(await shareText(dailyShareText(today, lineup, (slot) => dailyResult(slot, today))))
+    setShareMsg(note)
+    if (note) setTimeout(() => setShareMsg(''), 4000)
+  }
   const onStart = () => {
     if (sessionOpen) return void startBreak()
     setAskMood(true)
@@ -239,10 +247,20 @@ export function HomeScreen() {
 
       {!resting && (
         <section class="dailies" aria-label="Today's dailies">
-          <h2 class="dailies-head">
-            Today's dailies
+          <div class="dailies-head">
+            <h2>Today's dailies</h2>
             <span class="muted">{dailiesWaiting ? `${dailiesWaiting} to play` : 'All done'}</span>
-          </h2>
+            {dailiesWaiting < lineup.length && (
+              <button class="link-btn dailies-share" onClick={() => void onShare()}>
+                Share
+              </button>
+            )}
+          </div>
+          {shareMsg && (
+            <p class="muted dailies-note" role="status">
+              {shareMsg}
+            </p>
+          )}
           {lineup.map((plan) => {
             const info = KIND_INFO[plan.kind]
             const done = dailyResult(plan.slot, today)

@@ -141,6 +141,9 @@
 .win-btn { width: 100%; margin-top: 6px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity 0.26s, transform 0.26s; }
 .win-btn.ready { opacity: 1; transform: none; pointer-events: auto; }
 .win-btn:disabled { opacity: 1; }
+.win-share { margin-top: -4px; color: #ffc27a; opacity: 0; pointer-events: none; transition: opacity 0.26s; }
+.win-share.ready { opacity: 1; pointer-events: auto; }
+.win-note { margin: -6px 0 0; color: #f1e4da; font-size: 15px; }
 
 /* ---------- Home ---------- */
 .home-hello { display: flex; flex-direction: column; gap: 2px; }

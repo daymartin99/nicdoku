@@ -208,8 +208,22 @@ test('three dailies: solving one leaves the other two, and an open one carries o
   await expect(page.getByRole('button', { name: /^Wild/ })).toBeDisabled()
   await page.getByRole('button', { name: /^Calm/ }).click()
   await solveCurrent(page)
+  // sharing goes to the phone's share sheet: today's times, never the board
+  await page.evaluate(() => {
+    const w = window as unknown as { shared: string[] }
+    w.shared = []
+    navigator.share = async (d?: ShareData) => void w.shared.push(d?.text ?? '')
+  })
+  await page.locator('.win-share.ready').click()
+  const shared = await page.evaluate(() => (window as unknown as { shared: string[] }).shared)
+  expect(shared).toHaveLength(1)
+  expect(shared[0]).toMatch(/^Nicdoku · /)
+  expect(shared[0]).toMatch(/Calm 8×8 · \d+:\d\d/)
+  expect(shared[0]).toContain('Wild')
+  expect(shared[0]).toContain('not yet')
   await page.locator('.win-btn.ready').click()
   await expect(page.getByText('2 to play')).toBeVisible()
+  await expect(page.locator('.dailies-share')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Calm.*Solved in/ })).toBeDisabled()
   await expect(page.getByRole('button', { name: /^Wild/ })).toBeEnabled()
 })
