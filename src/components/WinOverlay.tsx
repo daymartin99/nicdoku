@@ -8,6 +8,7 @@ import { nextPuzzle, loading } from '../flow'
 import { formatTime } from '../stats/metrics'
 import { SESSION_SIZE } from '../config'
 import { Piece } from './Piece'
+import { dailyShareText, shareText, shareNote } from '../share'
 
 const CONFETTI = ['#8E7BDB', '#F7A05E', '#8DD67E', '#F5A2DE', '#A8C8E6', '#FFC53D']
 
@@ -60,6 +61,11 @@ export function WinOverlay() {
   const thisSlot = g && w.mode === 'daily' ? slotOf(g) : null
   const dailiesDone = lineup.filter((p) => dailyResult(p.slot, today)).length
   const dailiesToGo = lineup.length - dailiesDone
+  const [note, setNote] = useState('')
+  const share = async () => {
+    setNote('')
+    setNote(shareNote(await shareText(dailyShareText(today, lineup, (slot) => dailyResult(slot, today)))))
+  }
 
   return (
     <div class="win-overlay" role="dialog" aria-label="Puzzle solved">
@@ -131,6 +137,16 @@ export function WinOverlay() {
         >
           {loading.value ? 'Shuffling…' : cta}
         </button>
+        {w.mode === 'daily' && (
+          <button class={`link-btn win-share${ready ? ' ready' : ''}`} onClick={() => ready && void share()}>
+            Share today's times
+          </button>
+        )}
+        {note && (
+          <p class="win-note" role="status">
+            {note}
+          </p>
+        )}
       </div>
     </div>
   )

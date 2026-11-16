@@ -129,8 +129,12 @@
 
 /* three dailies: Calm, Wild and the day's wildcard */
 .dailies { display: flex; flex-direction: column; gap: 8px; }
-.dailies-head { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 4px 0; font-size: 18px; color: var(--ink-strong); }
+.dailies-head { display: flex; align-items: baseline; gap: 8px; margin: 4px 4px 0; color: var(--ink-strong); }
+.dailies-head h2 { margin: 0 auto 0 0; font-size: 18px; }
 .dailies-head .muted { font-size: 15px; font-weight: 500; }
+/* sits on the heading's baseline but keeps a full-size tap target */
+.dailies-share { margin: -12px -12px -12px -4px; font-size: 15px; }
+.dailies-note { margin: -6px 4px 0; font-size: 14px; text-align: right; }
 .dailies .daily-card { padding-top: 12px; padding-bottom: 12px; }
 .dailies .daily-star { width: 46px; height: 46px; font-size: 26px; }
 .daily-text b { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
