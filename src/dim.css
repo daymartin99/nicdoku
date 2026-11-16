@@ -1,0 +1,122 @@
+/* ---------- Dim: the warm dark look ----------
+   Turned on by <html data-dim> (Settings → Brightness, or the phone's dark mode on Auto).
+   Same browns and creams, just turned down: cocoa cards on a near-black, cream ink.
+   The board's region colours stay as they are; they were picked to read on any card. */
+
+:root[data-dim] {
+  --card: #2c2420;
+  --card-soft: #251e1b;
+  --ink: #ecdcd2;
+  --ink-soft: #ab978c;
+  --ink-strong: #fbf1ea;
+  --good: #5cc47c;
+  --bad: #ff8a55;
+  --gold: #f0c64a;
+  --line: #3b312c;
+  --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+  /* soft tints for chips and highlights, readable on the cocoa cards */
+  --tint-gold: rgba(240, 198, 74, 0.16);
+  --tint-gold-ink: #f3d27a;
+  --tint-good: rgba(92, 196, 124, 0.16);
+  --tint-good-ink: #8fdca5;
+  --tint-bad: rgba(255, 110, 140, 0.15);
+  --tint-bad-ink: #ff9fb3;
+  --tint-violet: rgba(182, 156, 240, 0.18);
+  --tint-violet-ink: #cdb9ff;
+  --tint-blue: rgba(140, 190, 235, 0.16);
+  --tint-blue-ink: #a9d0f2;
+  --tint-orange: rgba(255, 170, 80, 0.16);
+  --tint-orange-ink: #ffbe7a;
+  --track: #4a3d37;
+  --toast-bg: #4a3c35;
+  color-scheme: dark;
+}
+
+/* ---- game ---- */
+:root[data-dim] .life.lost { color: var(--track); }
+:root[data-dim] .life path { stroke: var(--card); }
+:root[data-dim] .mc { background: var(--track); color: #d9b8a7; }
+:root[data-dim] .mc.t { background: #75584b; }
+:root[data-dim] .session-dots .d:not(.done):not(.now) { background: var(--track); }
+:root[data-dim] .win-overlay .session-dots .d:not(.done) { background: rgba(255, 255, 255, 0.22); }
+:root[data-dim] .diff-chip { background: var(--tint-good); color: var(--tint-good-ink); }
+:root[data-dim] .diff-chip.medium { background: var(--tint-orange); color: var(--tint-orange-ink); }
+:root[data-dim] .diff-chip.hard { background: var(--tint-bad); color: var(--tint-bad-ink); }
+:root[data-dim] .diff-chip.expert { background: var(--tint-violet); color: var(--tint-violet-ink); }
+:root[data-dim] .tool-wrap:disabled { color: #7d6b62; }
+/* the board itself sits on a slightly lifted card so the regions don't glow against black */
+:root[data-dim] .board-card { background: #3a302b; }
+
+/* ---- home ---- */
+:root[data-dim] .toast,
+:root[data-dim] .photo-thumb > button.del span { background: var(--toast-bg); }
+:root[data-dim] .theme-card.big-day { background: radial-gradient(circle at 20% 30%, var(--card) 40%, rgba(240, 198, 74, 0.16)); }
+:root[data-dim] .daily-star { background: var(--tint-gold); }
+:root[data-dim] .daily-calm .daily-star { background: var(--tint-good); }
+:root[data-dim] .daily-wild .daily-star { background: var(--tint-violet); }
+:root[data-dim] .daily-giant .daily-star { background: var(--tint-blue); }
+:root[data-dim] .daily-mini .daily-star { background: var(--tint-bad); }
+:root[data-dim] .daily-stripes .daily-star { background: var(--line); }
+:root[data-dim] .daily-tag,
+:root[data-dim] .tt-today,
+:root[data-dim] .badge.gold,
+:root[data-dim] .pd-story-tags .tag.combo { background: var(--tint-gold); color: var(--tint-gold-ink); }
+:root[data-dim] .badge,
+:root[data-dim] .pd-story-tags .tag { background: var(--line); }
+:root[data-dim] .badge.good,
+:root[data-dim] .pd-story-tags .tag.clean { background: var(--tint-good); color: var(--tint-good-ink); }
+:root[data-dim] .pd-story-tags .tag.boss { background: var(--tint-bad); color: var(--tint-bad-ink); }
+:root[data-dim] .pb-card,
+:root[data-dim] .rt-row.mine,
+:root[data-dim] .top-row.mine { background: var(--tint-gold); }
+:root[data-dim] .ob-dots span { background: var(--track); }
+:root[data-dim] .archive-row + .archive-row { border-top-color: var(--line); }
+
+/* ---- settings & stats ---- */
+:root[data-dim] .text-input:focus { background: var(--card); }
+:root[data-dim] .btn.danger { background: var(--tint-bad); color: var(--tint-bad-ink); }
+:root[data-dim] .set-msg { background: var(--tint-good); color: var(--tint-good-ink); }
+:root[data-dim] .set-msg.err { background: var(--tint-bad); color: var(--tint-bad-ink); }
+:root[data-dim] .about a { color: var(--tint-orange-ink); }
+:root[data-dim] .toggle-switch:not(.on) { background: var(--track); }
+:root[data-dim] .reset-warn b { color: var(--tint-bad-ink); }
+:root[data-dim] .reset-hold { background: var(--tint-bad); color: var(--tint-bad-ink); box-shadow: inset 0 0 0 2px #8a3a4c; }
+:root[data-dim] .streak-dots span.frozen { background: var(--tint-blue); color: var(--tint-blue-ink); }
+:root[data-dim] .st-icon { color: var(--tint-blue-ink); }
+:root[data-dim] .fmt-chips .st-chip.fmt-calm[aria-selected='true'] { background: #35523f; color: #d9f0e0; }
+:root[data-dim] .rt-val.hot,
+:root[data-dim] .pd-rec-val { color: var(--tint-orange-ink); }
+:root[data-dim] .chart .tip text { fill: #1f1916; }
+
+/* ---- Power ---- */
+:root[data-dim] .power-card { background: linear-gradient(120deg, var(--card) 55%, #3d2434); }
+:root[data-dim] .rest-card { background: linear-gradient(160deg, var(--card), #2f2638); }
+:root[data-dim] .gentle-card { background: #263027; }
+:root[data-dim] .pi-calm .pi-hero { background: linear-gradient(160deg, #2a3a2f, #35523f); color: #d9f0e0; }
+:root[data-dim] .pi-warn { color: var(--tint-bad-ink); }
+:root[data-dim] .pd-records.first { background: linear-gradient(160deg, var(--card), #3a3020); }
+:root[data-dim] .pd-story-row.boss { background: var(--tint-bad); }
+:root[data-dim] .pi-lengths button.on { background: #4a2a5a; }
+/* the hour still deepens towards night; it just starts from dim instead of cream */
+:root[data-dim] .game-screen.power {
+  background: color-mix(in oklab, var(--bg), var(--night) calc(var(--pi) * 88%));
+  --p-ink: var(--ink);
+}
+:root[data-dim] .ring-bg { stroke: color-mix(in oklab, var(--track), var(--night) calc(var(--pi) * 60%)); }
+:root[data-dim] .stage-seg { background: color-mix(in oklab, var(--track), var(--night) calc(var(--pi) * 50%)); }
+:root[data-dim] .ghost-bar { background: color-mix(in oklab, var(--card), var(--night, #22112c) calc(var(--pi, 0) * 70%)); }
+:root[data-dim] .game-screen.power.mode-calm {
+  background: color-mix(in oklab, var(--bg), #2a3a2f calc(var(--pi) * 250%));
+  --p-ink: #cfe6d6;
+}
+:root[data-dim] .breathe { animation-name: dusk-to-dim; }
+@keyframes dusk-to-dim { from { background: #22112c; color: #fff4ea; } to { background: #1f1916; color: var(--ink); } }
+
+/* ---- weekly challenge, welcome back, results cards ---- */
+:root[data-dim] .challenge-card { background: linear-gradient(120deg, var(--card) 60%, #3a3020); }
+:root[data-dim] .challenge-card.done { background: linear-gradient(120deg, var(--card) 60%, #263a2c); }
+:root[data-dim] .ch-icon { background: var(--tint-gold); }
+:root[data-dim] .challenge-card.done .ch-icon { background: var(--tint-good); color: var(--tint-good-ink); }
+:root[data-dim] .pd-challenge { background: linear-gradient(120deg, var(--card) 50%, #3a3020); }
+:root[data-dim] .welcome-back { background: linear-gradient(120deg, var(--card) 45%, #263a2c); }

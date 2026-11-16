@@ -233,7 +233,7 @@ export function GhostBar() {
   if (r.ghost === null) {
     return (
       <div class="ghost-bar first" aria-label="No ghost yet">
-        <span aria-hidden="true">👻</span> First run of this format: this one becomes your ghost
+        <span aria-hidden="true">👻</span> First run like this: it becomes your ghost
       </div>
     )
   }

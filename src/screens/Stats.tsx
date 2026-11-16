@@ -91,7 +91,7 @@ export function StatsScreen() {
   const active: Tab = tab ?? (solves && !solves.length && runs.length ? 'power' : 'overview')
   const noSolves = (
     <div class="card st-empty fade-in">
-      Solve a few puzzles and your graphs will grow here 🌱
+      Solve a few puzzles and your graphs will grow&nbsp;here&nbsp;🌱
     </div>
   )
 
@@ -493,7 +493,14 @@ function PowerTab({ runs: allRuns, pairs }: { runs: PowerRun[]; pairs: MoodPair[
     }
   }, [runs, pairs])
 
-  if (!d) return <div class="card st-empty fade-in">Your first Power run will show up here ⚡</div>
+  if (!d) {
+    return (
+      <div class="card st-empty fade-in">
+        <p>Your first Power run will show up&nbsp;here&nbsp;⚡</p>
+        <button class="link-btn" onClick={() => go('power-intro')}>Have a look at Power</button>
+      </div>
+    )
+  }
   const { latest, blocks, bests, vs, focus, pe, steady } = d
   const slice = sliceMs(latest) / MIN
   const m = (x: number) => (Number.isInteger(x) ? `${x}` : x.toFixed(1))

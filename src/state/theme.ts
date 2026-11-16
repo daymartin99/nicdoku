@@ -58,6 +58,19 @@ export const pieceArt = computed<PieceArt>(() =>
   settings.value.photoPiece ? { kind: 'photo', photoId: settings.value.photoPiece } : theme.value.piece,
 )
 
+export const DIM_BG = '#1f1916'
+
+// the phone's own dark mode, kept live so 'auto' dims when the rest of the phone does
+const darkQuery = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-color-scheme: dark)') : undefined
+const phoneDark = signal(!!darkQuery?.matches)
+darkQuery?.addEventListener?.('change', (e) => (phoneDark.value = e.matches))
+
+/** true while the warm dark look is on (picked in Settings, or the phone's dark mode on 'auto') */
+export const dim = computed(() => {
+  const a = settings.value.appearance
+  return a === 'dim' || (a === 'auto' && phoneDark.value)
+})
+
 if (typeof window !== 'undefined') {
   const refresh = () => {
     const now = new Date()
@@ -68,9 +81,13 @@ if (typeof window !== 'undefined') {
 
   effect(() => {
     const t = theme.value
-    const root = document.documentElement.style
-    root.setProperty('--bg', t.bg ?? '#f7f1ec')
-    root.setProperty('--accent', t.accent ?? '#f2922f')
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.bg ?? '#f7f1ec')
+    const isDim = dim.value
+    const el = document.documentElement
+    // seasonal backgrounds are all near-white, so dim uses one warm near-black for every theme
+    const bg = isDim ? DIM_BG : t.bg ?? '#f7f1ec'
+    el.toggleAttribute('data-dim', isDim)
+    el.style.setProperty('--bg', bg)
+    el.style.setProperty('--accent', t.accent ?? '#f2922f')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg)
   })
 }

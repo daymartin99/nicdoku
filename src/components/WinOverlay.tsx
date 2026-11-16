@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'preact/hooks'
 import { win, game } from '../state/game'
-import { progress } from '../state/progress'
+import { progress, dailyResult } from '../state/progress'
+import { dailyLineup, slotOf } from '../dailies'
+import { localDay } from '../db'
 import { theme, pieceArt, resolved } from '../state/theme'
 import { nextPuzzle, loading } from '../flow'
 import { formatTime } from '../stats/metrics'
@@ -52,6 +54,13 @@ export function WinOverlay() {
   const last = inSession && doneCount >= SESSION_SIZE
   const cta = !inSession ? 'Done' : last ? 'Finish break' : `Next puzzle`
 
+  // a daily: how today's set is going (this one is already recorded)
+  const today = localDay()
+  const lineup = w.mode === 'daily' ? dailyLineup(today) : []
+  const thisSlot = g && w.mode === 'daily' ? slotOf(g) : null
+  const dailiesDone = lineup.filter((p) => dailyResult(p.slot, today)).length
+  const dailiesToGo = lineup.length - dailiesDone
+
   return (
     <div class="win-overlay" role="dialog" aria-label="Puzzle solved">
       <div class="win-fx" aria-hidden="true">
@@ -100,6 +109,18 @@ export function WinOverlay() {
             </div>
             <span class="win-count">
               {Math.min(doneCount, SESSION_SIZE)} of {SESSION_SIZE} done
+            </span>
+          </div>
+        )}
+        {lineup.length > 1 && (
+          <div class="win-progress">
+            <div class="session-dots big" aria-hidden="true">
+              {lineup.map((p) => (
+                <span key={p.slot} class={dailyResult(p.slot, today) ? `d done${p.slot === thisSlot ? ' just' : ''}` : 'd'} />
+              ))}
+            </div>
+            <span class="win-count">
+              {dailiesToGo === 0 ? "All of today's dailies done" : `${dailiesToGo} more ${dailiesToGo === 1 ? 'daily' : 'dailies'} today`}
             </span>
           </div>
         )}

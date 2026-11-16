@@ -48,7 +48,7 @@ export function ArchiveScreen() {
         </span>
         {open && (
           <button class="btn archive-continue" onClick={continueGame}>
-            Finish your open puzzle first
+            Carry on with your open puzzle
           </button>
         )}
       </div>
@@ -75,7 +75,7 @@ export function ArchiveScreen() {
                       {e.onDay ? (
                         <span>On the day <b>{formatTime(e.onDay.timeMs)}</b></span>
                       ) : (
-                        <span class="muted">Missed</span>
+                        <span class="muted">Not played</span>
                       )}
                       {e.bestReplay && (
                         <span class="ar-replay">
