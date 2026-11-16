@@ -17,4 +17,4 @@
 }
 .ar-play:active { transform: scale(0.94); }
 .ar-play:disabled { opacity: 0.35; box-shadow: none; }
-.archive-link { display: block; margin: -4px auto 4px; }
+.archive-link { display: block; margin: -6px auto -4px; }

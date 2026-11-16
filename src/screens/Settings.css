@@ -58,7 +58,7 @@ button.set-row { width: 100%; text-align: left; }
   color: var(--ink-soft);
   line-height: 1.25;
 }
-.seg button[aria-pressed='true'] { background: #fff; color: var(--ink-strong); box-shadow: var(--shadow); }
+.seg button[aria-pressed='true'] { background: var(--card); color: var(--ink-strong); box-shadow: var(--shadow); }
 
 .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .btn-row > * { flex: 1 1 140px; }
@@ -152,3 +152,12 @@ label.btn input[type='file'] { display: none; }
 .about-rule p { margin: 0; }
 
 .code-input { font-family: ui-monospace, Menlo, monospace; font-size: 13px; resize: vertical; min-height: 88px; -webkit-user-select: text; user-select: text; }
+
+/* Start again: text on its own line, the button under it (no squeezed title) */
+.reset-card .set-row { flex-wrap: wrap; padding: 12px 0; }
+.reset-card .set-row .grow { flex-basis: 100%; }
+.reset-card .set-row .btn { flex: none; }
+
+/* short choices sit side by side */
+.seg.row { flex-direction: row; border-radius: 999px; }
+.seg.row button { flex: 1; min-height: 46px; border-radius: 999px; text-align: center; }

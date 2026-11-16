@@ -140,3 +140,6 @@
 .daily-giant .daily-star { background: #e3ecfb; }
 .daily-mini .daily-star { background: #fde7ef; }
 .daily-stripes .daily-star { background: #eeeeee; }
+
+/* one icon size down the Home list, so every card's text lines up */
+.home .ch-icon, .home .power-bolt { width: 46px; height: 46px; font-size: 24px; }

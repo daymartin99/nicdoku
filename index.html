@@ -13,9 +13,19 @@
     <meta name="format-detection" content="telephone=no" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <style>html,body{background:#f7f1ec;margin:0}</style>
+    <style>html,body{background:#f7f1ec;margin:0}html[data-dim],html[data-dim] body{background:#1f1916}</style>
+    <script>
+      // pick dim before the first paint, so an evening launch never flashes cream
+      try {
+        var a = (JSON.parse(localStorage.getItem('nd:settings') || '{}').appearance) || 'auto'
+        if (a === 'dim' || (a === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('data-dim', '')
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#1f1916')
+        }
+      } catch (e) {}
+    </script>
   </head>
-  <body style="background:#f7f1ec">
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

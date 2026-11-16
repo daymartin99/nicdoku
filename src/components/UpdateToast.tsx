@@ -30,7 +30,7 @@ export function UpdateToast() {
         gap: '6px',
         padding: '4px 4px 4px 18px',
         borderRadius: '999px',
-        background: 'var(--ink-strong)',
+        background: 'var(--toast-bg, var(--ink-strong))',
         color: '#fff',
         boxShadow: 'var(--shadow-lg)',
         fontSize: '16px',

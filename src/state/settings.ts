@@ -17,6 +17,8 @@ export type Settings = {
   haptics: boolean
   /** subtle pattern per region so colours are never the only cue */
   patterns: boolean
+  /** 'auto' follows the phone's dark mode; 'dim' is the warm dark look all day */
+  appearance: 'auto' | 'light' | 'dim'
   /** manual theme pick for one day, or null to follow the calendar */
   themeOverride: ThemeOverride | null
   /** photo piece id to use instead of the theme piece, or null */
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sound: false,
   haptics: true,
   patterns: false,
+  appearance: 'auto',
   themeOverride: null,
   photoPiece: null,
   onboarded: false,

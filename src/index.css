@@ -160,3 +160,10 @@ a { color: inherit; }
 
 /* body disables selection for the game; text fields must still allow select + paste on iPhone */
 input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* no lonely last words in body copy; even lines in headings */
+p, .sub, .muted { text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }
+
+/* keyboard / switch-control users can see where they are */
+:focus-visible { outline: 3px solid var(--ink-soft); outline-offset: 2px; }

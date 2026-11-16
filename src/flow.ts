@@ -8,6 +8,7 @@ import {
   progress, patchProgress, startSession, finishSession, sessionSeed, planSession, dailyResult,
   restingToday,
   powerWaiting,
+  inCooldown,
 } from './state/progress'
 import { theme } from './state/theme'
 import { localDay } from './db'
@@ -58,6 +59,8 @@ export function startBreak() {
     go('session-done')
     return
   }
+  // a new break waits for the cooldown (an open one can always be resumed)
+  if ((!s || s.finishedAt) && inCooldown()) return
   return launch(async () => {
     const pr = progress.value
     if (!pr.session || pr.session.finishedAt) startSession()

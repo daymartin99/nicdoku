@@ -126,7 +126,12 @@ export function HomeScreen() {
     const id = progress.value.session?.id
     if (v && id) void saveMood({ kind: 'break', ref: id, when: 'before', v })
   }
-  const onStart = () => (sessionOpen ? void startBreak() : setAskMood(true))
+  const onStart = () => {
+    if (sessionOpen) return void startBreak()
+    setAskMood(true)
+    // the check-in sits where the main button was: bring it into view (e.g. from the challenge card)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const nextAt = new Date(pr.cooldownUntil).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
 
   return (
@@ -282,7 +287,7 @@ export function HomeScreen() {
         </button>
       )}
 
-      <ChallengeCard disabled={resting || loading.value || otherGameOpen} />
+      <ChallengeCard disabled={resting || loading.value || otherGameOpen} onBreak={onStart} />
 
       {!resting && (
         <button class="card power-card" disabled={loading.value || otherGameOpen || !canPower} onClick={() => go('power-intro')}>
@@ -293,8 +298,8 @@ export function HomeScreen() {
               {otherGameOpen
                 ? 'Finish your puzzle first'
                 : powerLeft >= 60
-                  ? '5 to 60 minutes · calm, normal or wild'
-                  : `${powerLeft} minutes left today · calm, normal or wild`}
+                  ? '5–60 min · calm, normal or wild'
+                  : `${powerLeft} min left today · calm, normal or wild`}
             </span>
           </span>
         </button>

@@ -14,6 +14,12 @@ import {
 import type { FamilyData, FamilyMember } from '../themes/types'
 import './Settings.css'
 
+const APPEARANCE = [
+  ['auto', 'Auto'],
+  ['light', 'Light'],
+  ['dim', 'Dim'],
+] as const
+
 type Msg = { text: string; err?: boolean; reload?: boolean } | null
 
 function fmtBirthday(iso: string): string {
@@ -238,6 +244,23 @@ export function SettingsScreen() {
       <section class="set-group">
         <h2>Look &amp; feel</h2>
         <div class="card">
+          <div class="set-stack">
+            <div class="title" style={{ fontSize: 18, fontWeight: 600 }}>Brightness</div>
+            <div class="seg row" role="group" aria-label="Brightness">
+              {APPEARANCE.map(([id, label]) => (
+                <button key={id} aria-pressed={s.appearance === id} onClick={() => updateSettings({ appearance: id })}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div class="toggle-note">
+              {s.appearance === 'auto'
+                ? 'Goes dim when your phone switches to dark mode, usually in the evening'
+                : s.appearance === 'dim'
+                  ? 'Warm and dark all day, easy on the eyes'
+                  : 'Bright and creamy all day'}
+            </div>
+          </div>
           <Toggle
             label="Region patterns"
             note="Adds a soft pattern to each colour, so colours are never the only clue"
@@ -541,7 +564,7 @@ function FamilySection({ family, busy, onImport, say, run }: FamilyProps) {
             </button>
             <label class="btn small secondary">
               <input type="file" accept="application/json,.json" onChange={onImport} disabled={busy} />
-              Import family file
+              Import a file
             </label>
             <button class="btn small secondary" onClick={() => setPasting(!pasting)} disabled={busy} aria-expanded={pasting}>
               Paste a code

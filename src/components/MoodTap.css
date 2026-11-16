@@ -36,3 +36,8 @@
   .session-done:has(.done-mood) .done-art { width: 44px; height: 44px; }
   .session-done:has(.done-mood) .done-stats { padding-block: 10px; }
 }
+/* the weekly-challenge banner too (once a week): drop the little hero piece and slim the banner */
+@media (max-height: 760px) {
+  .session-done:has(.done-mood):has(.pd-challenge) .done-art { display: none; }
+  .session-done .pd-challenge { padding-block: 10px; font-size: 15px; line-height: 1.3; }
+}
